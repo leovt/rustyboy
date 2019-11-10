@@ -1,4 +1,7 @@
 //mod ppu {
+    pub const LCD_WIDTH:u32 = 160;
+    pub const LCD_HEIGHT:u32 = 144;
+
     mod oam_flags {
         pub const PRIORITY:u8 = 0x80;
         pub const FLIP_Y:u8 = 0x40;
