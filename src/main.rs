@@ -4,6 +4,7 @@ use ppu::{draw_line, LCD_WIDTH, LCD_HEIGHT};
 
 extern crate image as im;
 extern crate piston_window;
+extern crate fps_counter;
 use piston_window::*;
 
 fn main() {
@@ -33,18 +34,31 @@ fn main() {
             &TextureSettings::new()
         ).unwrap();
 
-    let rust_logo = "rust.png";
-    let rust_logo: G2dTexture = Texture::from_path(
-            &mut window.create_texture_context(),
-            &rust_logo,
-            Flip::None,
-            &TextureSettings::new()
-        ).unwrap();
-    window.set_lazy(true);
+    //window.set_lazy(false);
+    //window.set_bench_mode(true);
+    window.set_max_fps(60);
+    let mut counter:usize = 0;
+    let mut fps_ctr = fps_counter::FPSCounter::new();
     while let Some(e) = window.next() {
-        window.draw_2d(&e, |c, g, _| {
+        if let Some(_) = e.render_args() {
+            counter += 1;
+            let fps = fps_ctr.tick();
+            if counter == fps {
+                println!("fps = {}", fps);
+                counter = 0;
+            }
+            for x in 0..LCD_WIDTH {
+                for y in 0..LCD_HEIGHT {
+                    let p = (counter % 256) as u8;
+                    lcd.put_pixel(x, y, im::Rgba([p, p, p, 255u8]));
+            }}
+            texture.update(&mut texture_context, &lcd).unwrap();
+        }
+        window.draw_2d(&e, |c, g, device| {
+            // Update texture before rendering.
+            texture_context.encoder.flush(device);
             clear([1.0; 4], g);
-            image(&texture, c.transform, g);
+            image(&texture, c.transform.zoom(ZOOM as f64), g);
         });
     }
 }
