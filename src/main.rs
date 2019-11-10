@@ -39,6 +39,14 @@ fn main() {
     window.set_max_fps(60);
     let mut counter:usize = 0;
     let mut fps_ctr = fps_counter::FPSCounter::new();
+
+    let mut ppusa = ppu::PpuStandalone::new();
+    const PALETTE:[im::Rgba<u8>;4] = [
+        im::Rgba([53,61,52,255]),
+        im::Rgba([110,128,8,255]),
+        im::Rgba([157,181,154,255]),
+        im::Rgba([198,227,195,255])];
+
     while let Some(e) = window.next() {
         if let Some(_) = e.render_args() {
             counter += 1;
@@ -47,11 +55,7 @@ fn main() {
                 println!("fps = {}", fps);
                 counter = 0;
             }
-            for x in 0..LCD_WIDTH {
-                for y in 0..LCD_HEIGHT {
-                    let p = (counter % 256) as u8;
-                    lcd.put_pixel(x, y, im::Rgba([p, p, p, 255u8]));
-            }}
+            ppusa.draw_frame(&mut lcd, &PALETTE);
             texture.update(&mut texture_context, &lcd).unwrap();
         }
         window.draw_2d(&e, |c, g, device| {

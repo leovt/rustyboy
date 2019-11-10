@@ -1,3 +1,6 @@
+extern crate image;
+use image::{ImageBuffer, Rgba};
+
 pub const LCD_WIDTH:u32 = 160;
 pub const LCD_HEIGHT:u32 = 144;
 
@@ -44,6 +47,7 @@ pub struct PPURegister {
     window_x: u8,
 }
 
+#[derive(Copy, Clone)]
 pub struct OAMEntry {
     pos_x: u8,
     pos_y: u8,
@@ -51,6 +55,7 @@ pub struct OAMEntry {
     flags: u8,
 }
 
+#[derive(Copy, Clone)]
 pub struct Tile {
     data: [u8; 16],
 }
@@ -93,4 +98,45 @@ pub fn draw_line(ppu: &PPURegister,
 
 
     (pixels, cycles)
+}
+
+pub struct PpuStandalone {
+    ppu: PPURegister,
+    oam: [OAMEntry; 40],
+    window_map: [[u8; 32];32],
+    bg_map: [[u8; 32];32],
+    bgw_tiles: [Tile; 256],
+    ob_tiles: [Tile; 256]
+}
+
+impl PpuStandalone {
+    pub fn new() -> PpuStandalone {
+        PpuStandalone {
+            ppu: PPURegister {
+                lcd_control_flags: ctrl_flags::DISPLAY_ENABLE | ctrl_flags::BG_ENABLE,
+                lcd_status_flags: 0,
+                scroll_x: 0, scroll_y: 0,
+                ly: 0, ly_compare: 255,
+                dma: 0,
+                bg_palette: 0b11100100,
+                ob_palette_0: 0b11100100,
+                ob_palette_1: 0b11100100,
+                window_y: 0,
+                window_x: 0,
+            },
+            oam: [OAMEntry{pos_x:0, pos_y:0, tile_no:0, flags:0};40],
+            window_map: [[0;32];32],
+            bg_map: [[0;32];32],
+            bgw_tiles: [Tile{data:[0;16]};256],
+            ob_tiles: [Tile{data:[0;16]};256],
+        }
+    }
+
+    pub fn draw_frame(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, palette: &[Rgba<u8>;4]) {
+        for x in 0..LCD_WIDTH {
+            for y in 0..LCD_HEIGHT {
+                let p = 123u8;
+                lcd.put_pixel(x, y, im::Rgba([p, p, p, 255u8]));
+        }}
+    }
 }
