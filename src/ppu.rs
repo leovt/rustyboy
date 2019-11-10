@@ -1,8 +1,8 @@
 extern crate image;
 use image::{ImageBuffer, Rgba};
 
-pub const LCD_WIDTH:u32 = 160;
-pub const LCD_HEIGHT:u32 = 144;
+pub const LCD_WIDTH:usize = 160;
+pub const LCD_HEIGHT:usize = 144;
 
 mod oam_flags {
     pub const PRIORITY:u8 = 0x80;
@@ -74,9 +74,9 @@ pub fn draw_line(ppu: &PPURegister,
              window_map: &[[u8; 32];32],
              bg_map: &[[u8; 32];32],
              bgw_tiles: &[Tile; 256],
-             ob_tiles: &[Tile; 256]) -> ([u32;160], u32)
+             ob_tiles: &[Tile; 256]) -> ([u8;LCD_WIDTH], u32)
 {
-    let mut pixels:[u32;160] = [0;160];
+    let mut pixels:[u8;LCD_WIDTH] = [0;LCD_WIDTH];
     let mut cycles:u32 = 0;
 
     // oam search: 80 cycles
@@ -95,7 +95,21 @@ pub fn draw_line(ppu: &PPURegister,
     let active_obj = active_obj;
 
     // pixel transfer
+    let y = ppu.ly;
+    let y_map = (y / 8) as usize;
+    let y_tile = (y % 8 * 2) as usize;
 
+    for x in 0..LCD_WIDTH {
+        let x_map = (x / 8) as usize;
+        let x_tile = 7 - x % 8;
+        let upper = bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile];
+        let lower = bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile+1];
+
+        let upper_bit = (upper & (1 << x_tile)) >> x_tile;
+        let lower_bit = (lower & (1 << x_tile)) >> x_tile;
+
+        pixels[x as usize] = 2*upper_bit + lower_bit;
+    }
 
     (pixels, cycles)
 }
@@ -109,9 +123,52 @@ pub struct PpuStandalone {
     ob_tiles: [Tile; 256]
 }
 
+const SAMPLE_MAP:[[u8;32];32] = [
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0,0,0],
+
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0,  0,0,0,0,0,0,0,0]];
+
+const TILE_0:Tile = Tile {
+    data: [0u8;16]
+};
+
+const TILE_1:Tile = Tile {
+    data: [0xff, 0xff, 0x81, 0xff, 0x91, 0xef, 0x91, 0xef, 0x91, 0xef, 0x9d, 0xe3, 0x81, 0xff, 0xff, 0xff]
+};
+
 impl PpuStandalone {
     pub fn new() -> PpuStandalone {
-        PpuStandalone {
+        let mut p = PpuStandalone {
             ppu: PPURegister {
                 lcd_control_flags: ctrl_flags::DISPLAY_ENABLE | ctrl_flags::BG_ENABLE,
                 lcd_status_flags: 0,
@@ -129,14 +186,20 @@ impl PpuStandalone {
             bg_map: [[0;32];32],
             bgw_tiles: [Tile{data:[0;16]};256],
             ob_tiles: [Tile{data:[0;16]};256],
-        }
+        };
+        p.bg_map = SAMPLE_MAP;
+        p.bgw_tiles[0] = TILE_0;
+        p.bgw_tiles[1] = TILE_1;
+        p
     }
 
     pub fn draw_frame(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, palette: &[Rgba<u8>;4]) {
-        for x in 0..LCD_WIDTH {
-            for y in 0..LCD_HEIGHT {
-                let p = 123u8;
-                lcd.put_pixel(x, y, im::Rgba([p, p, p, 255u8]));
-        }}
+        for y in 0..LCD_HEIGHT {
+            self.ppu.ly = y as u8;
+            let pixels = draw_line(&self.ppu, &self.oam, &self.window_map, &self.bg_map, &self.bgw_tiles, &self.ob_tiles).0;
+            for (x, p) in pixels.iter().enumerate() {
+                lcd.put_pixel(x as u32, y as u32, palette[*p as usize]);
+            }
+        }
     }
 }

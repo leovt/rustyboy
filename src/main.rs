@@ -11,13 +11,13 @@ fn main() {
     const ZOOM:u32 = 3;
     let opengl = OpenGL::V3_2;
     let mut window: PistonWindow =
-        WindowSettings::new("rustyboy", [ZOOM*LCD_WIDTH, ZOOM*LCD_HEIGHT])
+        WindowSettings::new("rustyboy", [ZOOM*LCD_WIDTH as u32, ZOOM*LCD_HEIGHT as u32])
         .exit_on_esc(true)
         .graphics_api(opengl)
         .build()
         .unwrap();
 
-    let mut lcd = im::ImageBuffer::from_fn(LCD_WIDTH, LCD_HEIGHT, |x, y| {
+    let mut lcd = im::ImageBuffer::from_fn(LCD_WIDTH as u32, LCD_HEIGHT as u32, |x, y| {
         if x % 2 == 0 {
             im::Rgba([x as u8, 0u8, 255u8, 255u8])
         } else {
@@ -42,16 +42,17 @@ fn main() {
 
     let mut ppusa = ppu::PpuStandalone::new();
     const PALETTE:[im::Rgba<u8>;4] = [
-        im::Rgba([53,61,52,255]),
-        im::Rgba([110,128,8,255]),
+        im::Rgba([198,227,195,255]),
         im::Rgba([157,181,154,255]),
-        im::Rgba([198,227,195,255])];
+        im::Rgba([110,128,8,255]),
+        im::Rgba([53,61,52,255]),
+        ];
 
     while let Some(e) = window.next() {
         if let Some(_) = e.render_args() {
             counter += 1;
             let fps = fps_ctr.tick();
-            if counter == fps {
+            if counter >= fps {
                 println!("fps = {}", fps);
                 counter = 0;
             }
