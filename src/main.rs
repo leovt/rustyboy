@@ -1,5 +1,6 @@
 
 mod ppu;
+mod instructions;
 use ppu::{LCD_WIDTH, LCD_HEIGHT};
 
 extern crate image as im;
