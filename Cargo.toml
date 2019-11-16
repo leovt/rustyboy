@@ -10,3 +10,11 @@ edition = "2018"
 piston_window = "0.105.0"
 image = "0.22.1"
 fps_counter = "1.0.0"
+
+[[bin]]
+name = "rboy"
+path = "src/main.rs"
+
+[[bin]]
+name = "disasm"
+path = "src/disasm.rs"
