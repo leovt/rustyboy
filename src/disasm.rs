@@ -23,7 +23,7 @@ fn main() {
     while pos < data.len() {
         let mut instr = &instructions[data[pos] as usize];
         if instr.operation == instructions::Operation::PREFIX {
-            instr = &instructions[data[pos+1] as usize];
+            instr = &instructions[data[pos+1] as usize + 0x100];
         }
         let instr = instr;
         match instr.operation {
@@ -48,7 +48,7 @@ fn main() {
         }
         let mut instr = &instructions[data[pos] as usize];
         if instr.operation == instructions::Operation::PREFIX {
-            instr = &instructions[data[pos+1] as usize];
+            instr = &instructions[data[pos+1] as usize + 0x100];
         }
         let instr = instr;
 
