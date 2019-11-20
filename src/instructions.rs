@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OpData {
     ADC,
     ADD,
@@ -30,7 +30,7 @@ pub enum OpData {
     XOR,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Reg {
     A,B,C,D,E,H,L,
     AF,BC,DE,HL,SP,
@@ -39,7 +39,7 @@ pub enum Reg {
     Unused,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Acc {
     DIR,
     IND,
@@ -47,7 +47,7 @@ pub enum Acc {
     IND_DEC,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OpJump {
     JP,
     JR,
@@ -57,7 +57,7 @@ pub enum OpJump {
     RST,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum JumpCondition {
     ALWAYS,
     C,
@@ -66,7 +66,7 @@ pub enum JumpCondition {
     NZ,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum FlagOp {
     Unaffected,
     SetFlag,
@@ -74,7 +74,7 @@ pub enum FlagOp {
     CalculateFlag,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Operation {
     DATA16 {op: OpData, dst:Reg, dst_access:Acc, src:Reg, src_access:Acc, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp},
     DATA8 {op: OpData, dst:Reg, dst_access:Acc, src:Reg, src_access:Acc, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp, bit:u8},
@@ -90,7 +90,7 @@ pub enum Operation {
     UNDEF,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Instruction {
     pub mnemo: &'static str,
     pub length:u8,

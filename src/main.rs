@@ -1,4 +1,5 @@
 
+mod cpu;
 mod ppu;
 mod instructions;
 use ppu::{LCD_WIDTH, LCD_HEIGHT};
@@ -8,7 +9,7 @@ extern crate piston_window;
 extern crate fps_counter;
 use piston_window::*;
 
-fn main() {
+fn main_ppu() {
     const ZOOM:u32 = 3;
     let opengl = OpenGL::V3_2;
     let mut window: PistonWindow =
@@ -65,4 +66,8 @@ fn main() {
             image(&texture, c.transform.zoom(ZOOM as f64), g);
         });
     }
+}
+
+fn main(){
+    cpu::main();
 }
