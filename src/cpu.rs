@@ -207,7 +207,7 @@ impl Cpu {
             DAA => d,
             DEC => d-1,
             INC => add(d, 1, 0, &mut cf_out, &mut hf_out),
-            LD | LDH | LDHL | POP | PUSH => s,
+            LD => s,
             OR => d | s,
             RES => d & !bit,
             RL => d,
