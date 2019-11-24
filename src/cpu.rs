@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use crate::instructions::*;
 use Operation::*;
 
-struct Mmu {
+pub struct Mmu {
     memory:[u8;0x10000],
 }
 
@@ -14,15 +14,15 @@ impl Mmu {
         self.memory[address as usize] = value;
     }
 
-    fn read(&self, address:u16) -> u8{
+    pub fn read(&self, address:u16) -> u8{
         self.memory[address as usize]
     }
 
-    fn new() -> Mmu {
+    pub fn new() -> Mmu {
         Mmu { memory:[0;0x10000] }
     }
 
-    fn load(&mut self, filename: &str, base:u16) {
+    pub fn load(&mut self, filename: &str, base:u16) {
         let mut f = File::open(filename).expect("file not found");
         let mut data = Vec::new();
         f.read_to_end(&mut data).expect("error reading file");
@@ -32,24 +32,24 @@ impl Mmu {
     }
 }
 
-const FLAG_Z:u8 = 1<<7;
-const FLAG_N:u8 = 1<<6;
-const FLAG_H:u8 = 1<<5;
-const FLAG_C:u8 = 1<<4;
+pub const FLAG_Z:u8 = 1<<7;
+pub const FLAG_N:u8 = 1<<6;
+pub const FLAG_H:u8 = 1<<5;
+pub const FLAG_C:u8 = 1<<4;
 
-struct Cpu {
-    mmu: Mmu,
-    a:u8, f:u8,
-    b:u8, c:u8,
-    d:u8, e:u8,
-    h:u8, l:u8,
-    sp: u16,
-    pc: u16,
-    ie: bool,
-    hlt: bool,
+pub struct Cpu {
+    pub mmu: Mmu,
+    pub a:u8, pub f:u8,
+    pub b:u8, pub c:u8,
+    pub d:u8, pub e:u8,
+    pub h:u8, pub l:u8,
+    pub sp: u16,
+    pub pc: u16,
+    pub ie: bool,
+    pub hlt: bool,
 }
 
-fn word(h:u8, l:u8) -> u16 {
+pub fn word(h:u8, l:u8) -> u16 {
     (h as u16) << 8 | (l as u16)
 }
 
@@ -353,17 +353,23 @@ impl Cpu {
 
     }
 
-    fn step(&mut self) {
+    pub fn new(mmu:Mmu) -> Cpu {
+        Cpu{mmu:mmu,
+            a:0, f:0,
+            b:0, c:0,
+            d:0, e:0,
+            h:0, l:0,
+            sp:0,
+            pc:0,
+            ie:false,
+            hlt:false,
+        }
+    }
+
+    pub fn step(&mut self) {
         let oldpc = self.pc;
         let (instr, imm) = self.fetch_and_decode();
         let instr=instr;
-        println!("0x{:04x}:  {:10}  A:{:02x} B:{:02x} C:{:02x} D:{:02x} E:{:02x} H:{:02x} L:{:02x} {}{}{}{}",
-                  oldpc, instr.mnemo, self.a, self.b, self.c, self.d, self.e, self.h, self.l,
-                  if FLAG_Z & self.f != 0 {"Z"} else {"-"},
-                  if FLAG_N & self.f != 0 {"N"} else {"-"},
-                  if FLAG_H & self.f != 0 {"H"} else {"-"},
-                  if FLAG_C & self.f != 0 {"C"} else {"-"},
-              );
         match instr.operation {
             DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
             DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
@@ -385,16 +391,7 @@ impl Cpu {
 pub fn main() {
     let mut mmu = Mmu::new();
     mmu.load("DMG_ROM.bin", 0);
-    let mut cpu = Cpu{mmu:mmu,
-        a:0, f:0,
-        b:0, c:0,
-        d:0, e:0,
-        h:0, l:0,
-        sp:0,
-        pc:0,
-        ie:false,
-        hlt:false,
-    };
+    let mut cpu = Cpu::new(mmu);
     for i in 0..100000 {
         cpu.step();
     }
