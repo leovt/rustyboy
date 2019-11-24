@@ -53,10 +53,26 @@ fn word(h:u8, l:u8) -> u16 {
     (h as u16) << 8 | (l as u16)
 }
 
+#[derive(Copy, Clone, PartialEq)]
 enum Immediate {
     None,
     Imm8(u8),
     Imm16(u16),
+}
+
+fn add(a:u8, b:u8, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u8 {
+    *hf_out = (((a & 0x0F) + (b & 0x0F) + c) & 0xF0 != 0);
+    let [h,l] = ((a as u16) + (b as u16) + (c as u16)).to_be_bytes();
+    *cf_out = (h != 0);
+    l
+}
+
+fn add16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
+    let [ah, al] = a.to_be_bytes();
+    let [bh, bl] = a.to_be_bytes();
+    let rl = add(al, bl, c, cf_out, hf_out);
+    let rh = add(ah, bh, (if *cf_out {1} else {0}), cf_out, hf_out);
+    word(rh, rl)
 }
 
 impl Cpu {
@@ -125,6 +141,198 @@ impl Cpu {
         }
     }
 
+    fn readloc8(&self, loc:Location8, imm:Immediate) -> u8 {
+        use Location8::*;
+        match loc {
+            Empty => 0,
+            A | A_RO => self.a,
+            B => self.b,
+            C => self.c,
+            D => self.d,
+            E => self.e,
+            H => self.h,
+            L => self.l,
+            IMM8 => match imm {Immediate::Imm8(i) => i,
+                        _ => panic!("Expect IMM8!")},
+            ADDR_BC => self.mmu.read(word(self.b, self.c)),
+            ADDR_DE => self.mmu.read(word(self.d, self.e)),
+            ADDR_HL | ADDR_HL_DEC | ADDR_HL_INC => self.mmu.read(word(self.h, self.l)),
+            ADDR_IMM16 => match imm {Immediate::Imm16(a) => self.mmu.read(a),
+                        _ => panic!("Expect IMM16!")},
+            ADDR_C => self.mmu.read(word(0xFF, self.c)),
+            ADDR_IMM8 => match imm {Immediate::Imm8(i) => self.mmu.read(word(0xFF, i)),
+                        _ => panic!("Expect IMM8!")},
+        }
+    }
+
+    fn writeloc8(&mut self, loc:Location8, imm:Immediate, value:u8) {
+        use Location8::*;
+        match loc {
+            Empty | A_RO => (),
+            A => {self.a = value;},
+            B => {self.b = value;},
+            C => {self.c = value;},
+            D => {self.d = value;},
+            E => {self.e = value;},
+            H => {self.h = value;},
+            L => {self.l = value;},
+            IMM8 => panic!("Illegal destination IMM8!"),
+            ADDR_BC => self.mmu.write(word(self.b, self.c), value),
+            ADDR_DE => self.mmu.write(word(self.d, self.e), value),
+            Location8::ADDR_HL | Location8::ADDR_HL_DEC | Location8::ADDR_HL_INC => self.mmu.write(word(self.h, self.l), value),
+            ADDR_IMM16 => match imm {Immediate::Imm16(a) => self.mmu.write(a,value),
+                        _ => panic!("Expect IMM16!")},
+            ADDR_C => self.mmu.write(word(0xFF, self.c), value),
+            ADDR_IMM8 => match imm {Immediate::Imm8(i) => self.mmu.write(word(0xFF, i), value),
+                        _ => panic!("Expect IMM8!")},
+        }
+    }
+
+    fn data8(&mut self, op: OpData, dst:Location8, src:Location8, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp, bit:u8, imm:Immediate) {
+        let s = self.readloc8(src, imm);
+        let d = self.readloc8(dst, imm);
+        let c_in:u8 = if self.f & FLAG_C == 0 {0} else {1};
+
+        let mut hf_out = false;
+        let mut cf_out = false;
+
+        use OpData::*;
+        let r = match op {
+            ADC => add(d, s, c_in, &mut cf_out, &mut hf_out),
+            ADD => add(d, s, 0, &mut cf_out, &mut hf_out),
+            AND => s & d,
+            BIT => s & bit,
+            CP => add(d, !s, 1, &mut cf_out, &mut hf_out),
+            CPL => !d,
+            DAA => d,
+            DEC => d-1,
+            INC => add(d, 1, 0, &mut cf_out, &mut hf_out),
+            LD | LDH | LDHL | POP | PUSH => s,
+            OR => d | s,
+            RES => d & !bit,
+            RL => d,
+            RLC => d,
+            RR => d,
+            RRC => d,
+            SBC => add(d, !s, c_in, &mut cf_out, &mut hf_out),
+            SET => d | bit,
+            SLA => d,
+            SRA => d,
+            SRL => d,
+            SUB => add(d, !s, 1, &mut cf_out, &mut hf_out),
+            SWAP => (d >> 4) | (d << 4),
+            XOR => d ^ s,
+        };
+
+        use FlagOp::*;
+        match z {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_Z;},
+            ResetFlag => {self.f &= !FLAG_Z;},
+            CalculateFlag => {if r == 0 {self.f |= FLAG_Z;} else {self.f &= !FLAG_Z};},
+        };
+        match n {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_N;},
+            ResetFlag => {self.f &= !FLAG_N;},
+            CalculateFlag => panic!("Flag N can not be calculated."),
+        };
+        match h {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_H;},
+            ResetFlag => {self.f &= !FLAG_H;},
+            CalculateFlag => {if hf_out {self.f |= FLAG_H} else {self.f &= !FLAG_H};},
+        };
+        match c {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_C;},
+            ResetFlag => {self.f &= !FLAG_C;},
+            CalculateFlag => {if cf_out {self.f |= FLAG_C} else {self.f &= !FLAG_C};},
+        };
+
+        self.writeloc8(dst, imm, r);
+    }
+
+    fn readloc16(&self, loc:Location16, imm:Immediate) -> u16 {
+        use Location16::*;
+        match loc {
+            Empty_W | ADDR_SP_DEC => 0,
+            AF => word(self.a, self.f),
+            BC => word(self.b, self.c),
+            DE => word(self.d, self.e),
+            HL => word(self.h, self.l),
+            SP => self.sp,
+            IMM16 => match imm {Immediate::Imm16(i) => i,
+                        _ => panic!("Expect IMM16!")},
+            ADDR_SP_INC => word(self.mmu.read(self.sp+1), self.mmu.read(self.sp)),
+            ADDR_IMM16_W => match imm {Immediate::Imm16(a) => word(self.mmu.read(a+1), self.mmu.read(a)),
+                        _ => panic!("Expect IMM16!")},
+        }
+    }
+
+    fn writeloc16(&mut self, loc:Location16, imm:Immediate, value:u16) {
+        use Location16::*;
+        let [vh, vl] = value.to_be_bytes();
+        match loc {
+            AF => {self.a = vh; self.f = vl;},
+            BC => {self.b = vh; self.c = vl;},
+            DE => {self.d = vh; self.e = vl;},
+            HL => {self.h = vh; self.l = vl;},
+            SP => {self.sp = value;}
+            Empty_W | IMM16 | ADDR_SP_INC => panic!("Illegal destination IMM!"),
+            ADDR_SP_DEC => {self.mmu.write(self.sp-1, vh); self.mmu.write(self.sp-2, vl);},
+            ADDR_IMM16_W => match imm {Immediate::Imm16(a) => {self.mmu.write(a+1, vh); self.mmu.write(a, vl);},
+                        _ => panic!("Expect IMM16!")},
+        }
+    }
+
+    fn data16(&mut self, op: OpData, dst:Location16, src:Location16, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp, imm:Immediate) {
+
+        let s = self.readloc16(src, imm);
+        let d = self.readloc16(dst, imm);
+        let c_in:u8 = if self.f & FLAG_C == 0 {0} else {1};
+
+        let mut hf_out = false;
+        let mut cf_out = false;
+
+        use OpData::*;
+        let r = match op {
+            ADD => add16(d, s, 0, &mut cf_out, &mut hf_out),
+            DEC => d-1,
+            INC => add16(d, 1, 0, &mut cf_out, &mut hf_out),
+            LD => s,
+            _ => panic!("operation not available for 16bit"),
+        };
+
+        use FlagOp::*;
+        match z {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_Z;},
+            ResetFlag => {self.f &= !FLAG_Z;},
+            CalculateFlag => {if r == 0 {self.f |= FLAG_Z;} else {self.f &= !FLAG_Z};},
+        };
+        match n {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_N;},
+            ResetFlag => {self.f &= !FLAG_N;},
+            CalculateFlag => panic!("Flag N can not be calculated."),
+        };
+        match h {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_H;},
+            ResetFlag => {self.f &= !FLAG_H;},
+            CalculateFlag => {if hf_out {self.f |= FLAG_H} else {self.f &= !FLAG_H};},
+        };
+        match c {
+            Unaffected => (),
+            SetFlag => {self.f |= FLAG_C;},
+            ResetFlag => {self.f &= !FLAG_C;},
+            CalculateFlag => {if cf_out {self.f |= FLAG_C} else {self.f &= !FLAG_C};},
+        };
+
+        self.writeloc16(dst, imm, r);
+    }
+
     fn step(&mut self) {
         let oldpc = self.pc;
         let (instr, imm) = self.fetch_and_decode();
@@ -137,9 +345,10 @@ impl Cpu {
                   if FLAG_C & self.f != 0 {"C"} else {"-"},
               );
         match instr.operation {
-            DATA16 {..} => (),
-            DATA8 {..} => (),
-            JUMP  {op:op, cond:cond, rst_target:tgt} => if self.condition_satisfied(cond) {self.jump(op, tgt, imm)},
+            DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
+            DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
+            JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
+            SPIMM8 {dst} => (),
             PREFIX => panic!("PREFIX must not occur after decoding."),
             SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
             CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
