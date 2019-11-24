@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum OpData {
     ADC,
     ADD,
@@ -30,7 +30,7 @@ pub enum OpData {
     XOR,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Location8 {
     Empty,
     A, B, C, D, E, H, L,
@@ -41,7 +41,7 @@ pub enum Location8 {
     ADDR_C, ADDR_IMM8,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Location16 {
     Empty_W,
     AF, BC, DE, HL, SP, SP_IMM8,
@@ -50,7 +50,7 @@ pub enum Location16 {
     ADDR_IMM16_W,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum OpJump {
     JP,
     JR,
@@ -60,7 +60,7 @@ pub enum OpJump {
     RST,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum JumpCondition {
     ALWAYS,
     C,
@@ -77,7 +77,7 @@ pub enum FlagOp {
     CalculateFlag,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Operation {
     DATA16 {op: OpData, dst:Location16, src:Location16, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp},
     DATA8 {op: OpData, dst:Location8, src:Location8, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp, bit:u8},
@@ -93,7 +93,7 @@ pub enum Operation {
     UNDEF,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Instruction {
     pub mnemo: &'static str,
     pub length:u8,
