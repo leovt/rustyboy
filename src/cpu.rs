@@ -92,7 +92,7 @@ impl Cpu {
             let imm = match instr.length {
                 1 => Immediate::None,
                 2 => Immediate::Imm8(self.fetch()),
-                3 => Immediate::Imm16(word(self.fetch(), self.fetch())),
+                3 => {let l = self.fetch(); Immediate::Imm16(word(self.fetch(), l))},
                 _ => panic!("Unecpected instruction length")
             };
             (instr, imm)
