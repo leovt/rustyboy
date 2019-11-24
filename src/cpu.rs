@@ -251,6 +251,18 @@ impl Cpu {
         };
 
         self.writeloc8(dst, imm, r);
+
+        use Location8::{ADDR_HL_INC, ADDR_HL_DEC};
+        if src == ADDR_HL_INC || dst == ADDR_HL_INC {
+            let [h, l] = (word(self.h, self.l) + 1).to_be_bytes();
+            self.h = h;
+            self.l = l;
+        }
+        if src == ADDR_HL_DEC || dst == ADDR_HL_DEC {
+            let [h, l] = (word(self.h, self.l) - 1).to_be_bytes();
+            self.h = h;
+            self.l = l;
+        }
     }
 
     fn readloc16(&self, loc:Location16, imm:Immediate) -> u16 {
@@ -331,6 +343,14 @@ impl Cpu {
         };
 
         self.writeloc16(dst, imm, r);
+
+        if src == Location16::ADDR_SP_INC {
+            self.sp += 2;
+        }
+        if dst == Location16::ADDR_SP_DEC {
+            self.sp -= 2;
+        }
+
     }
 
     fn step(&mut self) {
@@ -375,7 +395,7 @@ pub fn main() {
         ie:false,
         hlt:false,
     };
-    for i in 0..30 {
+    for i in 0..100000 {
         cpu.step();
     }
 }
