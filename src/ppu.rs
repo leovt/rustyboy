@@ -125,14 +125,14 @@ pub fn draw_line(ppu: &PPURegister,
 }
 
 pub struct Ppu {
-    cycles_left: isize,
-    x: u8,
-    mode: u8,
-    cycles_left_current_line: isize,
+    pub cycles_left: isize,
+    pub x: u8,
+    pub mode: u8,
+    pub cycles_left_current_line: isize,
 }
 
 impl Ppu {
-    fn new() -> Ppu {
+    pub fn new() -> Ppu {
         Ppu {
             cycles_left: 0,
             x: 0,
@@ -141,7 +141,7 @@ impl Ppu {
         }
     }
 
-    fn run_for(&mut self, mmu: &mut Mmu, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, cycles:isize) {
+    pub fn run_for(&mut self, mmu: &mut Mmu, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, cycles:isize) {
         self.cycles_left += cycles;
 
         let scroll_x = mmu.read(0xff42);

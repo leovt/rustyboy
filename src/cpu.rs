@@ -428,7 +428,7 @@ impl Cpu {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> isize {
         let oldpc = self.pc;
         let (instr, imm) = self.fetch_and_decode();
         let instr=instr;
@@ -447,6 +447,7 @@ impl Cpu {
             STOP => {self.hlt = true;}, //treat as HALT for now
             UNDEF => panic!("UNDEF instruction occured."),
         }
+        instr.cycles as isize
     }
 }
 

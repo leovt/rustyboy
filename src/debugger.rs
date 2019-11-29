@@ -3,10 +3,15 @@ use std::io;
 use std::io::Write;
 
 use crate::cpu::*;
+use crate::ppu::{LCD_WIDTH, LCD_HEIGHT, Ppu};
 use crate::instructions;
+
+extern crate image as im;
+
 
 struct Debugger {
     cpu: Cpu,
+    ppu: Ppu,
     breakpoints: HashSet<u16>,
 }
 
@@ -45,25 +50,27 @@ fn parseCommand(line: &String) -> DbgCommand {
 }
 
 impl Debugger {
-    fn new(cpu:Cpu) -> Debugger{
-        Debugger {cpu, breakpoints: HashSet::new(),}
+    fn new(cpu:Cpu, ppu:Ppu) -> Debugger{
+        Debugger {cpu, ppu, breakpoints: HashSet::new(),}
     }
 
     fn run(&mut self) {
         let mut singleStep = true;
         let mut trace = false;
+        let mut lcd = im::ImageBuffer::from_pixel(LCD_WIDTH as u32, LCD_HEIGHT as u32, im::Rgba([0u8;4]));
         loop {
             loop {
                 if singleStep | self.breakpoints.contains(&self.cpu.pc) {
                     break;
                 }
                 if trace {
-                    println!("{}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu));
+                    println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
                 }
-                self.cpu.step();
+                let cycles = self.cpu.step();
+                self.ppu.run_for(&mut self.cpu.mmu, &mut lcd, cycles);
             }
 
-            println!("{}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu));
+            println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
             print!("rboy dbg> ");
             io::stdout().flush();
 
@@ -111,10 +118,26 @@ fn cpustate(cpu:&Cpu) -> String {
           )
 }
 
+fn ppustate(ppu:&Ppu, mmu:&Mmu) -> String {
+    format!("  x={} y={} mode={} cycles_left={}",
+        ppu.x,
+        mmu.read(0xff44),
+        ppu.mode,
+        ppu.cycles_left,
+    )
+}
+
 pub fn main() {
     let mut mmu = Mmu::new();
     mmu.load("DMG_ROM.bin", 0);
+    // copy logo to cardridge rom area for testing...
+    for x in 0xa8..0xd8 {
+        mmu.write(x+0x104-0xa8, mmu.read(x));
+    }
+    // checksum for empty cardridge
+    mmu.write(0x14d, 0xe7);
     let mut cpu = Cpu::new(mmu);
-    let mut dbg = Debugger::new(cpu);
+    let mut ppu = Ppu::new();
+    let mut dbg = Debugger::new(cpu, ppu);
     dbg.run();
 }
