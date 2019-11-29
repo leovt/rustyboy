@@ -1,6 +1,7 @@
 
 mod cpu;
 mod ppu;
+mod debugger;
 mod instructions;
 use ppu::{LCD_WIDTH, LCD_HEIGHT};
 
@@ -69,5 +70,5 @@ fn main_ppu() {
 }
 
 fn main(){
-    cpu::main();
+    debugger::main();
 }
