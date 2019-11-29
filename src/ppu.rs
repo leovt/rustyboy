@@ -152,9 +152,13 @@ impl Ppu {
             match self.mode {
                 // vblank: 10 lines
                 0 => {
-                    if self.cycles_left >= 4560 {
-                        self.cycles_left -= 4560;
-                        ly = 0;
+                    if self.cycles_left >= 456 {
+                        self.cycles_left -= 456;
+                        ly += 1;
+                        if ly >= 154 {
+                            ly = 0;
+                            self.mode = 2;
+                        }
                     } else {
                         break;
                     }
