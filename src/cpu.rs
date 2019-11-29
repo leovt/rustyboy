@@ -69,10 +69,72 @@ fn add(a:u8, b:u8, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u8 {
 
 fn add16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
     let [ah, al] = a.to_be_bytes();
-    let [bh, bl] = a.to_be_bytes();
+    let [bh, bl] = b.to_be_bytes();
     let rl = add(al, bl, c, cf_out, hf_out);
     let rh = add(ah, bh, (if *cf_out {1} else {0}), cf_out, hf_out);
     word(rh, rl)
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let mut c: bool = false;
+        let mut h: bool = true;
+        assert_eq!(add(0xa3, 0x12, 0, &mut c, &mut h), 0xb5);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add(0xa3, 0x12, 1, &mut c, &mut h), 0xb6);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add(0xa3, 0x1c, 0, &mut c, &mut h), 0xbf);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add(0xa3, 0x1c, 1, &mut c, &mut h), 0xc0);
+        assert_eq!(c, false);
+        assert_eq!(h, true);
+        assert_eq!(add(0xa3, 0x1d, 0, &mut c, &mut h), 0xc0);
+        assert_eq!(c, false);
+        assert_eq!(h, true);
+        assert_eq!(add(0xe3, 0x1c, 0, &mut c, &mut h), 0xff);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add(0xe3, 0x1c, 1, &mut c, &mut h), 0x00);
+        assert_eq!(c, true);
+        assert_eq!(h, true);
+    }
+
+    #[test]
+    fn test_add16() {
+        let mut c: bool = false;
+        let mut h: bool = true;
+        assert_eq!(add16(0xa300, 0x1200, 0, &mut c, &mut h), 0xb500);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add16(0xa300, 0x1200, 1, &mut c, &mut h), 0xb501);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add16(0xa300, 0x1c00, 0, &mut c, &mut h), 0xbf00);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add16(0xa300, 0x1cff, 1, &mut c, &mut h), 0xc000);
+        assert_eq!(c, false);
+        assert_eq!(h, true);
+        assert_eq!(add16(0xa300, 0x1d00, 0, &mut c, &mut h), 0xc000);
+        assert_eq!(c, false);
+        assert_eq!(h, true);
+        assert_eq!(add16(0xe300, 0x1c00, 0, &mut c, &mut h), 0xff00);
+        assert_eq!(c, false);
+        assert_eq!(h, false);
+        assert_eq!(add16(0xe300, 0x1cff, 1, &mut c, &mut h), 0x0000);
+        assert_eq!(c, true);
+        assert_eq!(h, true);
+    }
+
+
 }
 
 impl Cpu {
@@ -205,20 +267,20 @@ impl Cpu {
             CP => add(d, !s, 1, &mut cf_out, &mut hf_out),
             CPL => !d,
             DAA => d,
-            DEC => d-1,
+            DEC => add(d, !1, 1, &mut cf_out, &mut hf_out),
             INC => add(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
             OR => d | s,
             RES => d & !bit,
-            RL => d,
-            RLC => d,
-            RR => d,
-            RRC => d,
+            RL => {cf_out = (d & 0x80 != 0); (d << 1) | c_in},
+            RLC => {cf_out = (d & 0x80 != 0); (d << 1) | (if cf_out {1} else {0})},
+            RR => {cf_out = (d & 1 != 0); (d >> 1) | (c_in << 7)},
+            RRC => {cf_out = (d & 1 != 0); (d >> 1) | (if cf_out {0x80} else {0})},
             SBC => add(d, !s, c_in, &mut cf_out, &mut hf_out),
             SET => d | bit,
-            SLA => d,
-            SRA => d,
-            SRL => d,
+            SLA => {cf_out = (d & 0x80 != 0); (d << 1)},
+            SRA => {cf_out = (d & 1 != 0); (d >> 1) | (d & 0x80)},
+            SRL => {cf_out = (d & 1 != 0); (d >> 1)},
             SUB => add(d, !s, 1, &mut cf_out, &mut hf_out),
             SWAP => (d >> 4) | (d << 4),
             XOR => d ^ s,
@@ -374,7 +436,7 @@ impl Cpu {
             DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
             DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
             JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
-            SPIMM8 {dst} => (),
+            SPIMM8 {dst} => panic!("{} not implemented.", instr.mnemo),
             PREFIX => panic!("PREFIX must not occur after decoding."),
             SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
             CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
