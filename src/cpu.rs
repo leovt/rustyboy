@@ -10,7 +10,7 @@ pub struct Mmu {
 }
 
 impl Mmu {
-    fn write(&mut self, address:u16, value:u8){
+    pub fn write(&mut self, address:u16, value:u8){
         self.memory[address as usize] = value;
     }
 

@@ -1,8 +1,17 @@
-extern crate image;
-use image::{ImageBuffer, Rgba};
+extern crate image as im;
+use im::{ImageBuffer, Rgba};
+
+use crate::cpu::{Mmu};
 
 pub const LCD_WIDTH:usize = 160;
 pub const LCD_HEIGHT:usize = 144;
+
+const LCD_PALETTE:[im::Rgba<u8>;4] = [
+    im::Rgba([198,227,195,255]),
+    im::Rgba([157,181,154,255]),
+    im::Rgba([110,128,8,255]),
+    im::Rgba([53,61,52,255]),
+];
 
 mod oam_flags {
     pub const PRIORITY:u8 = 0x80;
@@ -113,6 +122,113 @@ pub fn draw_line(ppu: &PPURegister,
     }
 
     (pixels, cycles)
+}
+
+pub struct Ppu {
+    cycles_left: isize,
+    x: u8,
+    mode: u8,
+    cycles_left_current_line: isize,
+}
+
+impl Ppu {
+    fn new() -> Ppu {
+        Ppu {
+            cycles_left: 0,
+            x: 0,
+            mode: 0,
+            cycles_left_current_line: 0,
+        }
+    }
+
+    fn run_for(&mut self, mmu: &mut Mmu, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, cycles:isize) {
+        self.cycles_left += cycles;
+
+        let scroll_x = mmu.read(0xff42);
+        let scroll_y = mmu.read(0xff43);
+        let mut ly = mmu.read(0xff44);
+
+        while self.cycles_left > 0 {
+            match self.mode {
+                // vblank: 10 lines
+                0 => {
+                    if self.cycles_left >= 4560 {
+                        self.cycles_left -= 4560;
+                        ly = 0;
+                    } else {
+                        break;
+                    }
+                },
+                // hblank:
+                1 => {
+                    if self.cycles_left >= self.cycles_left_current_line {
+                        self.cycles_left -= self.cycles_left_current_line;
+                        self.cycles_left_current_line = 0;
+                        ly += 1;
+                        self.mode = if ly < 144 {2} else {0};
+                    } else {
+                        break;
+                    }
+                },
+                // oam_search
+                2 => {
+                    if self.cycles_left >= 80 {
+                        self.cycles_left -= 80;
+                        self.cycles_left_current_line = 456-80;
+                        self.x = 0;
+                        // todo: actually do the oam search
+                        self.mode = 3;
+                    } else {
+                        break;
+                    }
+                },
+                // drawing
+                3 => {
+                    let y_virt = (ly as usize + scroll_y as usize) % 256;
+                    let y_map = (y_virt / 8) as usize;
+                    let y_tile = (y_virt % 8 * 2) as usize;
+
+                    let x_virt = ((self.x as usize + scroll_x as usize) % 256) as u8;
+                    let x_map = (x_virt / 8) as usize;
+                    let x_tile = 7 - x_virt % 8;
+
+                    let upper = 0b10101010u8; //bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile];
+                    let lower = 0b11001100u8; //bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile+1];
+
+                    let upper_bit = (upper & (1 << x_tile)) >> x_tile;
+                    let lower_bit = (lower & (1 << x_tile)) >> x_tile;
+
+                    lcd.put_pixel(self.x as u32, ly as u32, LCD_PALETTE[(2*upper_bit + lower_bit) as usize]);
+
+                    self.x += 1;
+                    if self.x >= 160 {
+                        self.mode = 1;
+                    }
+                    self.cycles_left -= 1;
+                    self.cycles_left_current_line -= 1;
+
+                }
+                _ => panic!("mode illegal")
+            }
+        } // wend
+
+        mmu.write(0xff41, self.mode);
+        mmu.write(0xff44, ly);
+    }
+
+
+//            0xff40 => lcd_control_flags
+//            0xff41 => lcd_status_flags
+//            0xff42 => scroll_x
+//            0xff43 => scroll_y
+//            0xff44 => ly
+//            0xff45 => ly_compare
+//            0xff46 => dma
+//            0xff47 => bg_palette
+//            0xff48 => ob_palette_0
+//            0xff49 => ob_palette_1
+//            0xff4a => window_x
+//            0xff4b => window_y
 }
 
 pub struct PpuStandalone {
