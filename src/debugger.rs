@@ -7,12 +7,14 @@ use crate::ppu::{LCD_WIDTH, LCD_HEIGHT, Ppu};
 use crate::instructions;
 
 extern crate image as im;
+use im::{ImageBuffer, Rgba};
 
 
 struct Debugger {
     cpu: Cpu,
     ppu: Ppu,
     breakpoints: HashSet<u16>,
+    trace: bool,
 }
 
 enum DbgCommand {
@@ -51,43 +53,52 @@ fn parseCommand(line: &String) -> DbgCommand {
 
 impl Debugger {
     fn new(cpu:Cpu, ppu:Ppu) -> Debugger{
-        Debugger {cpu, ppu, breakpoints: HashSet::new(),}
+        Debugger {cpu, ppu, breakpoints: HashSet::new(), trace:true}
     }
 
     fn run(&mut self) {
-        let mut singleStep = true;
-        let mut trace = false;
         let mut lcd = im::ImageBuffer::from_pixel(LCD_WIDTH as u32, LCD_HEIGHT as u32, im::Rgba([0u8;4]));
         loop {
-            loop {
-                if singleStep | self.breakpoints.contains(&self.cpu.pc) {
-                    break;
-                }
-                if trace {
-                    println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
-                }
-                let cycles = self.cpu.step();
-                self.ppu.run_for(&mut self.cpu.mmu, &mut lcd, cycles);
-            }
-
-            println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
-            print!("rboy dbg> ");
-            io::stdout().flush();
-
-            let mut line = String::new();
-            io::stdin().read_line(&mut line).expect("Could not read command from stdin.");
-            use DbgCommand::*;
-            match parseCommand(&line) {
-                Continue => {singleStep = false; self.cpu.step();},
-                SingleStep => {singleStep = true; self.cpu.step();},
-                SetBreakpoint(addr) => {self.breakpoints.insert(addr);},
-                ClearBreakpoint(addr) => {self.breakpoints.remove(&addr);},
-                ToggleTrace => {trace = !trace; println!("trace is {}.", if trace {"on"} else {"off"});},
-                Error => {println!("DebuggerCommands:\n  c: continue\n  s: single step\n  b addr: set breakpoint\n  cl addr: clear breakpoint");},
-            }
+            self.interact(&mut lcd);
         }
     }
 
+    fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) {
+        println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
+        print!("rboy dbg> ");
+        io::stdout().flush();
+
+        let mut line = String::new();
+        io::stdin().read_line(&mut line).expect("Could not read command from stdin.");
+
+        use DbgCommand::*;
+        match parseCommand(&line) {
+            Continue => self.run_to_breakpoint(lcd, false),
+            SingleStep => self.run_to_breakpoint(lcd, true),
+            SetBreakpoint(addr) => {self.breakpoints.insert(addr);},
+            ClearBreakpoint(addr) => {self.breakpoints.remove(&addr);},
+            ToggleTrace => {
+                self.trace = !self.trace;
+                println!("trace is {}.", if self.trace {"on"} else {"off"});
+            },
+            Error => println!("DebuggerCommands:\n  c: continue\n  s: single step\n  b addr: set breakpoint\n  cl addr: clear breakpoint"),
+        }
+    }
+
+    fn run_to_breakpoint(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, single_step: bool) {
+        loop {
+            let cycles = self.cpu.step();
+            self.ppu.run_for(&mut self.cpu.mmu, lcd, cycles);
+
+            if single_step | self.breakpoints.contains(&self.cpu.pc) {
+                break;
+            }
+
+            if self.trace {
+                println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
+            }
+        }
+    }
 }
 
 fn dis_instr(mmu:&Mmu, addr:u16) -> String {
