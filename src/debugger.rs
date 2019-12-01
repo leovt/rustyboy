@@ -10,7 +10,7 @@ extern crate image as im;
 use im::{ImageBuffer, Rgba};
 
 
-struct Debugger {
+pub struct Debugger {
     cpu: Cpu,
     ppu: Ppu,
     breakpoints: HashSet<u16>,
@@ -52,7 +52,7 @@ fn parseCommand(line: &String) -> DbgCommand {
 }
 
 impl Debugger {
-    fn new(cpu:Cpu, ppu:Ppu) -> Debugger{
+    pub fn new(cpu:Cpu, ppu:Ppu) -> Debugger{
         Debugger {cpu, ppu, breakpoints: HashSet::new(), trace:true}
     }
 
@@ -63,7 +63,7 @@ impl Debugger {
         }
     }
 
-    fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) -> isize {
+    pub fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) -> isize {
         println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
         print!("rboy dbg> ");
         io::stdout().flush();

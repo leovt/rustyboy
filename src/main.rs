@@ -3,7 +3,9 @@ mod cpu;
 mod ppu;
 mod debugger;
 mod instructions;
-use ppu::{LCD_WIDTH, LCD_HEIGHT};
+use ppu::{LCD_WIDTH, LCD_HEIGHT, Ppu};
+use cpu::{Cpu, Mmu};
+use debugger::Debugger;
 
 extern crate image as im;
 extern crate piston_window;
@@ -38,13 +40,17 @@ fn main_ppu() {
     let mut fps_print_ctr:usize = 0;
     let mut fps_ctr = fps_counter::FPSCounter::new();
 
-    let mut ppusa = ppu::PpuStandalone::new();
-    const PALETTE:[im::Rgba<u8>;4] = [
-        im::Rgba([198,227,195,255]),
-        im::Rgba([157,181,154,255]),
-        im::Rgba([110,128,8,255]),
-        im::Rgba([53,61,52,255]),
-        ];
+    let mut mmu = Mmu::new();
+    mmu.load("DMG_ROM.bin", 0);
+    // copy logo to cardridge rom area for testing...
+    for x in 0xa8..0xd8 {
+        mmu.write(x+0x104-0xa8, mmu.read(x));
+    }
+    // checksum for empty cardridge
+    mmu.write(0x14d, 0xe7);
+    let mut cpu = Cpu::new(mmu);
+    let mut ppu = Ppu::new();
+    let mut dbg = Debugger::new(cpu, ppu);
 
     while let Some(e) = window.next() {
         if let Some(_) = e.render_args() {
@@ -55,9 +61,7 @@ fn main_ppu() {
                 println!("fps = {}", fps);
                 fps_print_ctr = 0;
             }
-            ppusa.ppu.scroll_x = ((counter / 6) % 256) as u8;
-            ppusa.ppu.scroll_y = ((counter / 23) % 256) as u8;
-            ppusa.draw_frame(&mut lcd, &PALETTE);
+            dbg.interact(&mut lcd);
             texture.update(&mut texture_context, &lcd).unwrap();
         }
         window.draw_2d(&e, |c, g, device| {
@@ -70,5 +74,6 @@ fn main_ppu() {
 }
 
 fn main(){
-    debugger::main();
+    main_ppu();
+    //debugger::main();
 }
