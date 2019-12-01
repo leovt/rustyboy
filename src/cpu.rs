@@ -61,9 +61,9 @@ enum Immediate {
 }
 
 fn add(a:u8, b:u8, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u8 {
-    *hf_out = (((a & 0x0F) + (b & 0x0F) + c) & 0xF0 != 0);
+    *hf_out = ((a & 0x0F) + (b & 0x0F) + c) & 0xF0 != 0;
     let [h,l] = ((a as u16) + (b as u16) + (c as u16)).to_be_bytes();
-    *cf_out = (h != 0);
+    *cf_out = h != 0;
     l
 }
 
@@ -71,7 +71,7 @@ fn add16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
     let [ah, al] = a.to_be_bytes();
     let [bh, bl] = b.to_be_bytes();
     let rl = add(al, bl, c, cf_out, hf_out);
-    let rh = add(ah, bh, (if *cf_out {1} else {0}), cf_out, hf_out);
+    let rh = add(ah, bh, if *cf_out {1} else {0}, cf_out, hf_out);
     word(rh, rl)
 }
 
@@ -275,15 +275,15 @@ impl Cpu {
             LD => s,
             OR => d | s,
             RES => d & !bit,
-            RL => {cf_out = (d & 0x80 != 0); (d << 1) | c_in},
-            RLC => {cf_out = (d & 0x80 != 0); (d << 1) | (if cf_out {1} else {0})},
-            RR => {cf_out = (d & 1 != 0); (d >> 1) | (c_in << 7)},
-            RRC => {cf_out = (d & 1 != 0); (d >> 1) | (if cf_out {0x80} else {0})},
+            RL => {cf_out = d & 0x80 != 0; (d << 1) | c_in},
+            RLC => {cf_out = d & 0x80 != 0; (d << 1) | (if cf_out {1} else {0})},
+            RR => {cf_out = d & 1 != 0; (d >> 1) | (c_in << 7)},
+            RRC => {cf_out = d & 1 != 0; (d >> 1) | (if cf_out {0x80} else {0})},
             SBC => add(d, !s, c_in, &mut cf_out, &mut hf_out),
             SET => d | bit,
-            SLA => {cf_out = (d & 0x80 != 0); (d << 1)},
-            SRA => {cf_out = (d & 1 != 0); (d >> 1) | (d & 0x80)},
-            SRL => {cf_out = (d & 1 != 0); (d >> 1)},
+            SLA => {cf_out = d & 0x80 != 0; (d << 1)},
+            SRA => {cf_out = d & 1 != 0; (d >> 1) | (d & 0x80)},
+            SRL => {cf_out = d & 1 != 0; (d >> 1)},
             SUB => add(d, !s, 1, &mut cf_out, &mut hf_out),
             SWAP => (d >> 4) | (d << 4),
             XOR => d ^ s,
@@ -451,14 +451,5 @@ impl Cpu {
             UNDEF => panic!("UNDEF instruction occured."),
         }
         instr.cycles as isize
-    }
-}
-
-pub fn main() {
-    let mut mmu = Mmu::new();
-    mmu.load("DMG_ROM.bin", 0);
-    let mut cpu = Cpu::new(mmu);
-    for i in 0..100000 {
-        cpu.step();
     }
 }
