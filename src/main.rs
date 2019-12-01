@@ -30,7 +30,7 @@ fn main_ppu() {
     let mut texture: G2dTexture = Texture::from_image(
             &mut texture_context,
             &lcd,
-            &TextureSettings::new()
+            &{let mut ts = TextureSettings::new(); ts.set_mag(Filter::Nearest); ts},
         ).unwrap();
 
     //window.set_lazy(false);
