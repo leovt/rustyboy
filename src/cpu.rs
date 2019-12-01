@@ -364,10 +364,8 @@ impl Cpu {
     }
 
     fn data16(&mut self, op: OpData, dst:Location16, src:Location16, z:FlagOp, n:FlagOp, h:FlagOp, c:FlagOp, imm:Immediate) {
-
         let s = self.readloc16(src, imm);
         let d = self.readloc16(dst, imm);
-        let c_in:u8 = if self.f & FLAG_C == 0 {0} else {1};
 
         let mut hf_out = false;
         let mut cf_out = false;
@@ -375,7 +373,7 @@ impl Cpu {
         use OpData::*;
         let r = match op {
             ADD => add16(d, s, 0, &mut cf_out, &mut hf_out),
-            DEC => d-1,
+            DEC => add16(d, !s, 1, &mut cf_out, &mut hf_out),
             INC => add16(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
             _ => panic!("operation not available for 16bit"),
@@ -432,7 +430,6 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> isize {
-        let oldpc = self.pc;
         let (instr, imm) = self.fetch_and_decode();
         let instr=instr;
         match instr.operation {
