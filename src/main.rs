@@ -52,7 +52,14 @@ fn main_ppu() {
     let mut ppu = Ppu::new();
     let mut dbg = Debugger::new(cpu, ppu);
 
+    let ups = 120;
+    let cycles_per_second = 4*1024*1024;
+    let cycles_per_update = cycles_per_second / ups;
+
     while let Some(e) = window.next() {
+        if let Some(args) = e.update_args() {
+            dbg.interact(&mut lcd, cycles_per_update);
+        }
         if let Some(_) = e.render_args() {
             counter += 1;
             fps_print_ctr += 1;
@@ -61,7 +68,6 @@ fn main_ppu() {
                 println!("fps = {}", fps);
                 fps_print_ctr = 0;
             }
-            dbg.interact(&mut lcd);
             texture.update(&mut texture_context, &lcd).unwrap();
         }
         window.draw_2d(&e, |c, g, device| {
