@@ -63,7 +63,7 @@ impl Debugger {
         }
     }
 
-    fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) {
+    fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>) -> isize {
         println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
         print!("rboy dbg> ");
         io::stdout().flush();
@@ -75,19 +75,25 @@ impl Debugger {
         match parseCommand(&line) {
             Continue => self.run_to_breakpoint(lcd, false),
             SingleStep => self.run_to_breakpoint(lcd, true),
-            SetBreakpoint(addr) => {self.breakpoints.insert(addr);},
-            ClearBreakpoint(addr) => {self.breakpoints.remove(&addr);},
+            SetBreakpoint(addr) => {self.breakpoints.insert(addr);0},
+            ClearBreakpoint(addr) => {self.breakpoints.remove(&addr);0},
             ToggleTrace => {
                 self.trace = !self.trace;
                 println!("trace is {}.", if self.trace {"on"} else {"off"});
+                0
             },
-            Error => println!("DebuggerCommands:\n  c: continue\n  s: single step\n  b addr: set breakpoint\n  cl addr: clear breakpoint"),
+            Error => {
+                println!("DebuggerCommands:\n  c: continue\n  s: single step\n  b addr: set breakpoint\n  cl addr: clear breakpoint");
+                0
+            },
         }
     }
 
-    fn run_to_breakpoint(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, single_step: bool) {
+    fn run_to_breakpoint(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, single_step: bool) -> isize {
+        let mut total_cycles = 0;
         loop {
             let cycles = self.cpu.step();
+            total_cycles += cycles;
             self.ppu.run_for(&mut self.cpu.mmu, lcd, cycles);
 
             if single_step | self.breakpoints.contains(&self.cpu.pc) {
@@ -98,6 +104,7 @@ impl Debugger {
                 println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
             }
         }
+        total_cycles
     }
 }
 
