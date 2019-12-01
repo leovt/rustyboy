@@ -105,6 +105,9 @@ mod tests {
         assert_eq!(add(0xe3, 0x1c, 1, &mut c, &mut h), 0x00);
         assert_eq!(c, true);
         assert_eq!(h, true);
+        assert_eq!(add(0x64, !1, 1, &mut c, &mut h), 0x63);
+        assert_eq!(c, true);
+        assert_eq!(h, true);
     }
 
     #[test]
