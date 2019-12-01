@@ -144,9 +144,13 @@ impl Ppu {
     pub fn run_for(&mut self, mmu: &mut Mmu, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, cycles:isize) {
         self.cycles_left += cycles;
 
-        let scroll_x = mmu.read(0xff42);
-        let scroll_y = mmu.read(0xff43);
+        let scroll_y = mmu.read(0xff42);
+        let scroll_x = mmu.read(0xff43);
         let mut ly = mmu.read(0xff44);
+
+        let control = mmu.read(0xff40);
+        let bgw_tiles = if control & ctrl_flags::BGW_TILE_DATA != 0 {0x8000} else {0x8800};
+        let bg_map = if control & ctrl_flags::BG_TMA == 0 {0x9800} else {0x9c00};
 
         while self.cycles_left > 0 {
             match self.mode {
@@ -189,16 +193,21 @@ impl Ppu {
                 // drawing
                 3 => {
                     let y_virt = (ly as usize + scroll_y as usize) % 256;
-                    let y_map = (y_virt / 8) as usize;
-                    let y_tile = (y_virt % 8 * 2) as usize;
+                    let y_map = (y_virt / 8) as u16;
+                    let y_tile = (y_virt % 8 * 2) as u16;
 
                     let x_virt = ((self.x as usize + scroll_x as usize) % 256) as u8;
-                    let x_map = (x_virt / 8) as usize;
+                    let x_map = (x_virt / 8) as u16;
                     let x_tile = 7 - x_virt % 8;
 
-                    let upper = 0b10101010u8; //bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile];
-                    let lower = 0b11001100u8; //bgw_tiles[bg_map[y_map][x_map] as usize].data[y_tile+1];
+                    let tile_no = mmu.read(bg_map + 32*y_map + x_map) as u16;
 
+                    let upper = mmu.read(bgw_tiles + tile_no * 16 + y_tile);
+                    let lower = mmu.read(bgw_tiles + tile_no * 16 + y_tile + 1);
+                    if tile_no != 0 {
+                    println!(" map: {:04x} has tile_no {} at {:04x} with content {:02x}{:02x}",
+                        bg_map + 32*y_map + x_map, tile_no, bgw_tiles + tile_no * 16 + y_tile, upper, lower);
+}
                     let upper_bit = (upper & (1 << x_tile)) >> x_tile;
                     let lower_bit = (lower & (1 << x_tile)) >> x_tile;
 
@@ -223,8 +232,8 @@ impl Ppu {
 
 //            0xff40 => lcd_control_flags
 //            0xff41 => lcd_status_flags
-//            0xff42 => scroll_x
-//            0xff43 => scroll_y
+//            0xff42 => scroll_y
+//            0xff43 => scroll_x
 //            0xff44 => ly
 //            0xff45 => ly_compare
 //            0xff46 => dma
