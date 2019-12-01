@@ -24,6 +24,8 @@ enum DbgCommand {
     SetBreakpoint (u16),
     ClearBreakpoint (u16),
     ToggleTrace,
+    Quit,
+    DumpMemory (u16),
 }
 
 fn parseCommand(line: &String) -> DbgCommand {
@@ -47,6 +49,14 @@ fn parseCommand(line: &String) -> DbgCommand {
             _ => Error,
         }
         Some("t") => ToggleTrace,
+        Some("q") => Quit,
+        Some("d") => match iter.next() {
+            Some(word) => match u16::from_str_radix(word, 16) {
+                Ok(addr) => DumpMemory(addr),
+                _ => Error,
+            },
+            _ => Error,
+        }
         _ => Error,
     }
 }
@@ -80,6 +90,25 @@ impl Debugger {
             ToggleTrace => {
                 self.trace = !self.trace;
                 println!("trace is {}.", if self.trace {"on"} else {"off"});
+                0
+            },
+            Quit => 0,
+            DumpMemory(addr) => {
+                let start = if addr < 0xff00 {addr} else {0xff00};
+                for i in 0..15 {
+                    let md = |a| format!("{:02x}{:02x}{:02x}{:02x}",
+                        self.cpu.mmu.read(a),
+                        self.cpu.mmu.read(a+1),
+                        self.cpu.mmu.read(a+2),
+                        self.cpu.mmu.read(a+3));
+                    let base = start + 16*i;
+                    println!("{:04x}  {} {}  {} {}",
+                        base,
+                        md(base),
+                        md(base+4),
+                        md(base+8),
+                        md(base+12));
+                }
                 0
             },
             Error => {
