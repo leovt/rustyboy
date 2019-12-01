@@ -204,10 +204,6 @@ impl Ppu {
 
                     let upper = mmu.read(bgw_tiles + tile_no * 16 + y_tile);
                     let lower = mmu.read(bgw_tiles + tile_no * 16 + y_tile + 1);
-                    if tile_no != 0 {
-                    println!(" map: {:04x} has tile_no {} at {:04x} with content {:02x}{:02x}",
-                        bg_map + 32*y_map + x_map, tile_no, bgw_tiles + tile_no * 16 + y_tile, upper, lower);
-}
                     let upper_bit = (upper & (1 << x_tile)) >> x_tile;
                     let lower_bit = (lower & (1 << x_tile)) >> x_tile;
 
