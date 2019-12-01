@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::collections::HashSet;
 
-use instructions::instructions;
+use instructions::INSTRUCTIONS;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,9 +21,9 @@ fn main() {
 
     let mut pos = 0usize;
     while pos < data.len() {
-        let mut instr = &instructions[data[pos] as usize];
+        let mut instr = &INSTRUCTIONS[data[pos] as usize];
         if instr.operation == instructions::Operation::PREFIX {
-            instr = &instructions[data[pos+1] as usize + 0x100];
+            instr = &INSTRUCTIONS[data[pos+1] as usize + 0x100];
         }
         let instr = instr;
         match instr.operation {
@@ -46,9 +46,9 @@ fn main() {
         if targets.contains(&pos) {
             println!("\naddr_0x{:04x}:", pos);
         }
-        let mut instr = &instructions[data[pos] as usize];
+        let mut instr = &INSTRUCTIONS[data[pos] as usize];
         if instr.operation == instructions::Operation::PREFIX {
-            instr = &instructions[data[pos+1] as usize + 0x100];
+            instr = &INSTRUCTIONS[data[pos+1] as usize + 0x100];
         }
         let instr = instr;
 

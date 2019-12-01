@@ -26,6 +26,7 @@ pub enum OpData {
     XOR,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Location8 {
     Empty,
@@ -38,6 +39,7 @@ pub enum Location8 {
     A_RO,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Location16 {
     Empty_W,
@@ -106,7 +108,7 @@ use Location16::*;
 use OpJump::*;
 use FlagOp::*;
 
-pub const instructions: [Instruction;0x200] = [
+pub const INSTRUCTIONS: [Instruction;0x200] = [
 Instruction {mnemo: "NOP", length: 1u8, cycles: 4u8, operation:NOP},
 Instruction {mnemo: "LD BC,d16", length: 3u8, cycles: 12u8, operation:DATA16 {op: LD, dst: BC, src: IMM16, z: Unaffected, n: Unaffected, h: Unaffected, c: Unaffected, }},
 Instruction {mnemo: "LD (BC),A", length: 1u8, cycles: 8u8, operation:DATA8 {op: LD, dst: ADDR_BC, src: A, z: Unaffected, n: Unaffected, h: Unaffected, c: Unaffected, bit: 0u8}},

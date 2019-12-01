@@ -36,7 +36,6 @@ fn main_ppu() {
     //window.set_lazy(false);
     //window.set_bench_mode(true);
     window.set_max_fps(60);
-    let mut counter:usize = 0;
     let mut fps_print_ctr:usize = 0;
     let mut fps_ctr = fps_counter::FPSCounter::new();
 
@@ -48,8 +47,8 @@ fn main_ppu() {
     }
     // checksum for empty cardridge
     mmu.write(0x14d, 0xe7);
-    let mut cpu = Cpu::new(mmu);
-    let mut ppu = Ppu::new();
+    let cpu = Cpu::new(mmu);
+    let ppu = Ppu::new();
     let mut dbg = Debugger::new(cpu, ppu);
 
     let ups = 120;
@@ -57,11 +56,10 @@ fn main_ppu() {
     let cycles_per_update = cycles_per_second / ups;
 
     while let Some(e) = window.next() {
-        if let Some(args) = e.update_args() {
+        if let Some(_) = e.update_args() {
             dbg.interact(&mut lcd, cycles_per_update);
         }
         if let Some(_) = e.render_args() {
-            counter += 1;
             fps_print_ctr += 1;
             let fps = fps_ctr.tick();
             if fps_print_ctr >= fps {

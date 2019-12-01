@@ -3,7 +3,7 @@ use std::io;
 use std::io::Write;
 
 use crate::cpu::*;
-use crate::ppu::{LCD_WIDTH, LCD_HEIGHT, Ppu};
+use crate::ppu::Ppu;
 use crate::instructions;
 
 extern crate image as im;
@@ -29,7 +29,7 @@ enum DbgCommand {
     DumpMemory (u16),
 }
 
-fn parseCommand(line: &String) -> DbgCommand {
+fn parse_command(line: &String) -> DbgCommand {
     use DbgCommand::*;
     let mut iter = line.split_whitespace();
     match iter.next() {
@@ -67,13 +67,6 @@ impl Debugger {
         Debugger {cpu, ppu, breakpoints: HashSet::new(), trace:true, running: false}
     }
 
-    fn run(&mut self) {
-        let mut lcd = im::ImageBuffer::from_pixel(LCD_WIDTH as u32, LCD_HEIGHT as u32, im::Rgba([0u8;4]));
-        loop {
-            self.interact(&mut lcd, 1000000);
-        }
-    }
-
     pub fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, max_cycles:isize) -> isize {
         if self.running {
             self.run_to_breakpoint(lcd, false, max_cycles)
@@ -81,13 +74,13 @@ impl Debugger {
         else {
             println!("{}  {}  {}", dis_instr(&self.cpu.mmu, self.cpu.pc), cpustate(&self.cpu), ppustate(&self.ppu, &self.cpu.mmu));
             print!("rboy dbg> ");
-            io::stdout().flush();
+            io::stdout().flush().expect("error on stdout.flush");
 
             let mut line = String::new();
             io::stdin().read_line(&mut line).expect("Could not read command from stdin.");
 
             use DbgCommand::*;
-            match parseCommand(&line) {
+            match parse_command(&line) {
                 Continue => self.run_to_breakpoint(lcd, false, max_cycles),
                 SingleStep => self.run_to_breakpoint(lcd, true, max_cycles),
                 SetBreakpoint(addr) => {self.breakpoints.insert(addr);0},
@@ -148,9 +141,9 @@ impl Debugger {
 }
 
 fn dis_instr(mmu:&Mmu, addr:u16) -> String {
-    let mut instr = &instructions::instructions[mmu.read(addr) as usize];
+    let mut instr = &instructions::INSTRUCTIONS[mmu.read(addr) as usize];
     if instr.operation == instructions::Operation::PREFIX {
-        instr = &instructions::instructions[mmu.read(addr+1) as usize + 0x100];
+        instr = &instructions::INSTRUCTIONS[mmu.read(addr+1) as usize + 0x100];
     }
     let instr = instr;
 
@@ -182,19 +175,4 @@ fn ppustate(ppu:&Ppu, mmu:&Mmu) -> String {
         ppu.mode,
         ppu.cycles_left,
     )
-}
-
-pub fn main() {
-    let mut mmu = Mmu::new();
-    mmu.load("DMG_ROM.bin", 0);
-    // copy logo to cardridge rom area for testing...
-    for x in 0xa8..0xd8 {
-        mmu.write(x+0x104-0xa8, mmu.read(x));
-    }
-    // checksum for empty cardridge
-    mmu.write(0x14d, 0xe7);
-    let mut cpu = Cpu::new(mmu);
-    let mut ppu = Ppu::new();
-    let mut dbg = Debugger::new(cpu, ppu);
-    dbg.run();
 }

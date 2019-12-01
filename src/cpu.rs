@@ -148,9 +148,9 @@ impl Cpu {
     }
 
     fn fetch_and_decode(&mut self) -> (Instruction, Immediate) {
-        let mut instr = instructions[self.fetch() as usize];
+        let mut instr = INSTRUCTIONS[self.fetch() as usize];
         if instr.operation == PREFIX {
-            instr = instructions[self.fetch() as usize + 0x100];
+            instr = INSTRUCTIONS[self.fetch() as usize + 0x100];
             (instr, Immediate::None)
         }
         else {
@@ -436,7 +436,7 @@ impl Cpu {
             DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
             DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
             JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
-            SPIMM8 {dst} => panic!("{} not implemented.", instr.mnemo),
+            SPIMM8 {dst} => panic!("{} not implemented. {:?}", instr.mnemo, dst),
             PREFIX => panic!("PREFIX must not occur after decoding."),
             SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
             CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
