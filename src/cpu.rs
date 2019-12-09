@@ -19,7 +19,7 @@ impl Mmu {
     }
 
     pub fn new() -> Mmu {
-        Mmu { memory:[0;0x10000] }
+        Mmu { memory:[0xff;0x10000] }
     }
 
     pub fn load(&mut self, filename: &str, base:u16) {
