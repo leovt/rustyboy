@@ -40,11 +40,8 @@ fn main_ppu() {
     let mut fps_ctr = fps_counter::FPSCounter::new();
 
     let mut mmu = Mmu::new();
-    mmu.load("DMG_ROM.bin", 0);
-    // copy logo to cardridge rom area for testing...
-    for x in 0xa8..0xd8 {
-        mmu.write(x+0x104-0xa8, mmu.read(x));
-    }
+    mmu.load("RBOY_ROM.bin", 0);
+
     // checksum for empty cardridge
     mmu.write(0x14d, 0xe7);
     let cpu = Cpu::new(mmu);
