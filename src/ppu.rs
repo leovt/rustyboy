@@ -77,10 +77,11 @@ impl Ppu {
                 0 => {
                     if self.cycles_left >= 456 {
                         self.cycles_left -= 456;
-                        ly += 1;
-                        if ly >= 154 {
+                        if ly >= 153 {
                             ly = 0;
                             self.mode = 2;
+                        } else {
+                            ly += 1;
                         }
                     } else {
                         break;
