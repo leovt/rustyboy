@@ -43,7 +43,7 @@ fn main_ppu() {
     mmu.load("RBOY_ROM.bin", 0);
 
     // checksum for empty cardridge
-    mmu.write(0x14d, 0xe7);
+    mmu.write(0x14d, 0x00);
     let cpu = Cpu::new(mmu);
     let ppu = Ppu::new();
     let mut dbg = Debugger::new(cpu, ppu);
