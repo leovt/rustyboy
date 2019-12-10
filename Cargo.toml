@@ -18,3 +18,7 @@ path = "src/main.rs"
 [[bin]]
 name = "disasm"
 path = "src/disasm.rs"
+
+[[bin]]
+name = "asm"
+path = "src/asm.rs"
