@@ -38,6 +38,8 @@ fn main_ppu() {
     window.set_max_fps(60);
     let mut fps_print_ctr:usize = 0;
     let mut fps_ctr = fps_counter::FPSCounter::new();
+    let mut ups_ctr = fps_counter::FPSCounter::new();
+    let mut ups = 0usize;
 
     let mut mmu = Mmu::new();
     mmu.load("RBOY_ROM.bin", 0);
@@ -48,19 +50,20 @@ fn main_ppu() {
     let ppu = Ppu::new();
     let mut dbg = Debugger::new(cpu, ppu);
 
-    let ups = 120;
+    let ups_target = 120;
     let cycles_per_second = 4*1024*1024;
-    let cycles_per_update = cycles_per_second / ups;
+    let cycles_per_update = cycles_per_second / ups_target;
 
     while let Some(e) = window.next() {
         if let Some(_) = e.update_args() {
             dbg.interact(&mut lcd, cycles_per_update);
+            ups = ups_ctr.tick();
         }
         if let Some(_) = e.render_args() {
             fps_print_ctr += 1;
             let fps = fps_ctr.tick();
             if fps_print_ctr >= fps {
-                println!("fps = {}", fps);
+                println!("fps = {}   ups = {}", fps, ups);
                 fps_print_ctr = 0;
             }
             texture.update(&mut texture_context, &lcd).unwrap();
