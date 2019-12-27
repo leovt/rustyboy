@@ -400,7 +400,7 @@ impl Cpu {
         use OpData::*;
         let r = match op {
             ADD => add16(d, s, 0, &mut cf_out, &mut hf_out),
-            DEC => add16(d, !s, 1, &mut cf_out, &mut hf_out),
+            DEC => add16(d, !1, 1, &mut cf_out, &mut hf_out),
             INC => add16(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
             _ => panic!("operation not available for 16bit"),
