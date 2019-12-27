@@ -93,7 +93,12 @@ impl Ppu {
                         self.cycles_left -= self.cycles_left_current_line;
                         self.cycles_left_current_line = 0;
                         ly += 1;
-                        self.mode = if ly < 144 {2} else {0};
+                        if ly < 144 {
+                            self.mode = 2;
+                        } else {
+                            self.mode = 0;
+                            mmu.flag_interrupt(0x01);
+                        }
                     } else {
                         break;
                     }

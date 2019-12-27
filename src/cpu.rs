@@ -15,7 +15,7 @@ impl Mmu {
     pub fn write(&mut self, address:u16, value:u8){
         match address {
             0xff50 => {self.boot_rom_enable = false;},
-            0x0000..=0x7fff => (), //panic!("write to rom"), 
+            0x0000..=0x7fff => (), //panic!("write to rom"),
             _ => {self.memory[address as usize] = value;}
         }
     }
@@ -52,6 +52,10 @@ impl Mmu {
         for (index, value) in data.iter().enumerate() {
             self.boot_rom[index] = *value;
         }
+    }
+
+    pub fn flag_interrupt(&mut self, irq:u8){
+        self.write(0xff0f, irq | self.read(0xff0f));
     }
 }
 
@@ -454,7 +458,7 @@ impl Cpu {
 
     pub fn step(&mut self) -> isize {
         let (instr, imm) = self.fetch_and_decode();
-        let instr=instr;
+
         match instr.operation {
             DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
             DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
@@ -470,6 +474,22 @@ impl Cpu {
             STOP => {self.hlt = true;}, //treat as HALT for now
             UNDEF => panic!("UNDEF instruction occured."),
         }
-        instr.cycles as isize
+
+        let irq = self.mmu.read(0xffff) & self.mmu.read(0xff0f);
+        if self.ie && (irq != 0) {
+            self.ie = false;
+            self.mmu.write(0xff0f, 0);
+            let mut rst_target:u8 = 0;
+            if irq & 0x01 != 0 {rst_target = 0x40;}
+            else if irq & 0x02 != 0 {rst_target = 0x48;}
+            else if irq & 0x04 != 0 {rst_target = 0x50;}
+            else if irq & 0x08 != 0 {rst_target = 0x58;}
+            else if irq & 0x10 != 0 {rst_target = 0x60;}
+            self.jump(OpJump::RST, rst_target, Immediate::None);
+            16 + instr.cycles as isize
+        }
+        else {
+            instr.cycles as isize
+        }
     }
 }
