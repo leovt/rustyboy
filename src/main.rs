@@ -42,7 +42,7 @@ fn main_ppu() {
     let mut ups = 0usize;
 
     let mut mmu = Mmu::new();
-    mmu.load("RBOY_ROM.bin", 0);
+    mmu.load_boot_rom("RBOY_ROM.bin");
 
     // checksum for empty cardridge
     mmu.write(0x14d, 0x00);

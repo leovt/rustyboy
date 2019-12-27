@@ -7,19 +7,33 @@ use Operation::*;
 
 pub struct Mmu {
     memory:[u8;0x10000],
+    boot_rom:[u8;0x100],
+    boot_rom_enable:bool,
 }
 
 impl Mmu {
     pub fn write(&mut self, address:u16, value:u8){
-        self.memory[address as usize] = value;
+        match address {
+            0xff50 => {self.boot_rom_enable = false;},
+            0x0000..=0x7fff => (), //panic!("write to rom"), 
+            _ => {self.memory[address as usize] = value;}
+        }
     }
 
     pub fn read(&self, address:u16) -> u8{
-        self.memory[address as usize]
+        if address < 0x100 && self.boot_rom_enable {
+            self.boot_rom[address as usize]
+        } else {
+            self.memory[address as usize]
+        }
     }
 
     pub fn new() -> Mmu {
-        Mmu { memory:[0xff;0x10000] }
+        Mmu {
+            memory:[0xff;0x10000],
+            boot_rom:[0xff;0x100],
+            boot_rom_enable:true,
+         }
     }
 
     pub fn load(&mut self, filename: &str, base:u16) {
@@ -28,6 +42,15 @@ impl Mmu {
         f.read_to_end(&mut data).expect("error reading file");
         for (index, value) in data.iter().enumerate() {
             self.memory[index + base as usize] = *value;
+        }
+    }
+
+    pub fn load_boot_rom(&mut self, filename: &str) {
+        let mut f = File::open(filename).expect("file not found");
+        let mut data = Vec::new();
+        f.read_to_end(&mut data).expect("error reading file");
+        for (index, value) in data.iter().enumerate() {
+            self.boot_rom[index] = *value;
         }
     }
 }
