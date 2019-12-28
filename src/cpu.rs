@@ -229,6 +229,7 @@ impl Cpu {
                 self.sp += 1;
                 self.pc = word(pch, pcl);
                 // TODO handle signalling of completion of interrupt handler for RETI
+                if op == RETI {self.ie = true;}
             },
         }
     }

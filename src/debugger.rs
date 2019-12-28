@@ -158,13 +158,14 @@ fn dis_instr(mmu:&Mmu, addr:u16) -> String {
 }
 
 fn cpustate(cpu:&Cpu) -> String {
-    format!("A:{:02x} B:{:02x} C:{:02x} D:{:02x} E:{:02x} HL:{:02x}{:02x}->{:02x} SP:{:04x}->{:02x} {}{}{}{}",
+    format!("A:{:02x} B:{:02x} C:{:02x} D:{:02x} E:{:02x} HL:{:02x}{:02x}->{:02x} SP:{:04x}->{:02x} {}{}{}{}{}",
               cpu.a, cpu.b, cpu.c, cpu.d, cpu.e, cpu.h, cpu.l,
               cpu.mmu.read(word(cpu.h, cpu.l)), cpu.sp, cpu.mmu.read(cpu.sp),
               if FLAG_Z & cpu.f != 0 {"Z"} else {"-"},
               if FLAG_N & cpu.f != 0 {"N"} else {"-"},
               if FLAG_H & cpu.f != 0 {"H"} else {"-"},
               if FLAG_C & cpu.f != 0 {"C"} else {"-"},
+              if cpu.ie {"IE"} else {"  "},
           )
 }
 
