@@ -126,6 +126,7 @@ impl Debugger {
             total_cycles += cycles;
             max_cycles -= cycles;
             self.ppu.run_for(&mut self.cpu.mmu, lcd, cycles);
+            self.cpu.mmu.tick(cycles);
 
             if single_step | self.breakpoints.contains(&self.cpu.pc) {
                 self.running = false;

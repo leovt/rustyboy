@@ -9,11 +9,67 @@ pub struct Mmu {
     memory:[u8;0x10000],
     boot_rom:[u8;0x100],
     boot_rom_enable:bool,
+    timer:Timer,
+}
+
+pub struct Timer {
+    div: isize,
+    tac: u8,
+    tma: u8,
+    tima: u8,
+}
+
+impl Timer {
+    pub fn new() -> Timer {
+        Timer {div:0, tac:0, tma:0, tima:0}
+    }
+
+    pub fn tick(&mut self, cycles: isize) -> bool{
+        let mut interrupt = false;
+        if self.tac & 0x04 == 0 {
+            self.div += cycles;
+            self.div &= 0xffff;
+        } else {
+            let freq = match self.tac & 0x03 {
+                1 => 16,
+                2 => 64,
+                3 => 256,
+                _ => 1024
+            };
+            for _ in 0..cycles {
+                let old = self.div & freq;
+                self.div += 1;
+                self.div &= 0xffff;
+                let new = self.div & freq;
+                if old == 0 && new != 0 {
+                    if self.tima == 0xff {
+                        self.tima = self.tma;
+                        interrupt = true;
+                    }
+                    else {
+                        self.tima += 1;
+                    }
+                }
+            }
+            println!("timer div={}, tac={}, tima={}, tma={}", self.div, self.tac, self.tima, self.tma);
+        }
+        interrupt
+    }
 }
 
 impl Mmu {
     pub fn write(&mut self, address:u16, value:u8){
         match address {
+            0xff04 => {self.timer.div = 0;},
+            0xff05 => {self.timer.tima = value;},
+            0xff06 => {self.timer.tma = value;},
+            0xff07 => {self.timer.tac = value;},
+            0xff46 => { // DMA
+                let base = (value as u16) << 8;
+                for i in 0..0xa0 {
+                    self.memory[0xfe00 + i] = self.read(base + i as u16);
+                }
+            }
             0xff50 => {self.boot_rom_enable = false;},
             0x0000..=0x7fff => (), //panic!("write to rom"),
             _ => {self.memory[address as usize] = value;}
@@ -21,10 +77,16 @@ impl Mmu {
     }
 
     pub fn read(&self, address:u16) -> u8{
-        if address < 0x100 && self.boot_rom_enable {
-            self.boot_rom[address as usize]
-        } else {
-            self.memory[address as usize]
+        match address {
+            0xff04 => ((self.timer.div & 0xff00) >> 8) as u8,
+            0xff05 => self.timer.tima,
+            0xff06 => self.timer.tma,
+            0xff07 => self.timer.tac,
+            _ => if address < 0x100 && self.boot_rom_enable {
+                self.boot_rom[address as usize]
+            } else {
+                self.memory[address as usize]
+            }
         }
     }
 
@@ -33,6 +95,7 @@ impl Mmu {
             memory:[0xff;0x10000],
             boot_rom:[0xff;0x100],
             boot_rom_enable:true,
+            timer:Timer::new(),
          }
     }
 
@@ -56,6 +119,12 @@ impl Mmu {
 
     pub fn flag_interrupt(&mut self, irq:u8){
         self.write(0xff0f, irq | self.read(0xff0f));
+    }
+
+    pub fn tick(&mut self, cycles:isize){
+        if self.timer.tick(cycles){
+            self.flag_interrupt(0x04);
+        }
     }
 }
 
