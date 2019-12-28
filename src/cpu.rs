@@ -276,7 +276,7 @@ impl Cpu {
         let addr = match imm {
             Immediate::Imm16(addr) => addr,
             Immediate::Imm8(offset) => if offset < 128 {self.pc + offset as u16} else {self.pc + offset as u16 - 0x100},
-            Immediate::None => rst_target as u16,
+            Immediate::None => if op == JP {word(self.h, self.l)} else {rst_target as u16},
         };
 
         match op {
