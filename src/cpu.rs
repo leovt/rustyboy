@@ -163,6 +163,13 @@ fn add(a:u8, b:u8, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u8 {
     l
 }
 
+fn sub(a:u8, b:u8, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u8 {
+    let r = add(a, !b, 1-c, cf_out, hf_out);
+    *cf_out = ! *cf_out;
+    *hf_out = ! *hf_out;
+    r
+}
+
 fn add16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
     let [ah, al] = a.to_be_bytes();
     let [bh, bl] = b.to_be_bytes();
@@ -170,6 +177,14 @@ fn add16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
     let rh = add(ah, bh, if *cf_out {1} else {0}, cf_out, hf_out);
     word(rh, rl)
 }
+
+fn sub16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
+    let r = add16(a, !b, 1-c, cf_out, hf_out);
+    *cf_out = ! *cf_out;
+    *hf_out = ! *hf_out;
+    r
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -364,10 +379,10 @@ impl Cpu {
             ADD => add(d, s, 0, &mut cf_out, &mut hf_out),
             AND => s & d,
             BIT => s & bit,
-            CP => add(d, !s, 1, &mut cf_out, &mut hf_out),
+            CP => sub(d, s, 0, &mut cf_out, &mut hf_out),
             CPL => !d,
             DAA => d,
-            DEC => add(d, !1, 1, &mut cf_out, &mut hf_out),
+            DEC => sub(d, 1, 0, &mut cf_out, &mut hf_out),
             INC => add(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
             OR => d | s,
@@ -376,12 +391,12 @@ impl Cpu {
             RLC => {cf_out = d & 0x80 != 0; (d << 1) | (if cf_out {1} else {0})},
             RR => {cf_out = d & 1 != 0; (d >> 1) | (c_in << 7)},
             RRC => {cf_out = d & 1 != 0; (d >> 1) | (if cf_out {0x80} else {0})},
-            SBC => add(d, !s, c_in, &mut cf_out, &mut hf_out),
+            SBC => sub(d, s, c_in, &mut cf_out, &mut hf_out),
             SET => d | bit,
             SLA => {cf_out = d & 0x80 != 0; (d << 1)},
             SRA => {cf_out = d & 1 != 0; (d >> 1) | (d & 0x80)},
             SRL => {cf_out = d & 1 != 0; (d >> 1)},
-            SUB => add(d, !s, 1, &mut cf_out, &mut hf_out),
+            SUB => sub(d, s, 0, &mut cf_out, &mut hf_out),
             SWAP => (d >> 4) | (d << 4),
             XOR => d ^ s,
         };
@@ -470,7 +485,7 @@ impl Cpu {
         use OpData::*;
         let r = match op {
             ADD => add16(d, s, 0, &mut cf_out, &mut hf_out),
-            DEC => add16(d, !1, 1, &mut cf_out, &mut hf_out),
+            DEC => sub16(d, 1, 0, &mut cf_out, &mut hf_out),
             INC => add16(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
             _ => panic!("operation not available for 16bit"),
