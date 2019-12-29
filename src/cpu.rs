@@ -7,9 +7,11 @@ use Operation::*;
 
 pub struct Mmu {
     memory:[u8;0x10000],
+    rom:[u8;0x10000],
     boot_rom:[u8;0x100],
     boot_rom_enable:bool,
     timer:Timer,
+    bank:u8,
 }
 
 pub struct Timer {
@@ -71,7 +73,8 @@ impl Mmu {
                 }
             }
             0xff50 => {self.boot_rom_enable = false;},
-            0x0000..=0x7fff => (), //panic!("write to rom"),
+            0x2000..=0x3fff => {self.bank=value;},
+            0x0000..=0x7fff => (),
             _ => {self.memory[address as usize] = value;}
         }
     }
@@ -82,20 +85,25 @@ impl Mmu {
             0xff05 => self.timer.tima,
             0xff06 => self.timer.tma,
             0xff07 => self.timer.tac,
-            _ => if address < 0x100 && self.boot_rom_enable {
+            0x0000..=0x00ff => if self.boot_rom_enable {
                 self.boot_rom[address as usize]
             } else {
-                self.memory[address as usize]
-            }
+                self.rom[address as usize]
+            },
+            0x0000..=0x3fff => self.rom[address as usize],
+            0x4000..=0x7fff => self.rom[(address & 0x3fff) as usize + self.bank as usize * 0x4000],
+            _ => self.memory[address as usize],
         }
     }
 
     pub fn new() -> Mmu {
         Mmu {
             memory:[0xff;0x10000],
+            rom:[0xff;0x10000],
             boot_rom:[0xff;0x100],
             boot_rom_enable:true,
             timer:Timer::new(),
+            bank:1,
          }
     }
 
@@ -104,7 +112,7 @@ impl Mmu {
         let mut data = Vec::new();
         f.read_to_end(&mut data).expect("error reading file");
         for (index, value) in data.iter().enumerate() {
-            self.memory[index + base as usize] = *value;
+            self.rom[index + base as usize] = *value;
         }
     }
 
