@@ -548,7 +548,17 @@ impl Cpu {
             DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
             DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
             JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
-            SPIMM8 {dst} => panic!("{} not implemented. {:?}", instr.mnemo, dst),
+            SPIMM8 {dst} => {
+                let offset = match imm {Immediate::Imm8(i) => i,
+                            _ => panic!("Expect IMM8!")};
+                let mut hf_out = false;
+                let mut cf_out = false;
+                let r = add16(offset as u16, self.sp, 0, &mut cf_out, &mut hf_out);
+                self.writeloc16(dst, imm, r);
+                self.f = 0;
+                if hf_out {self.f |= FLAG_H};
+                if cf_out {self.f |= FLAG_C};
+            },
             PREFIX => panic!("PREFIX must not occur after decoding."),
             SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
             CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
