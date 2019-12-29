@@ -471,7 +471,7 @@ impl Cpu {
         use Location16::*;
         let [vh, vl] = value.to_be_bytes();
         match loc {
-            AF => {self.a = vh; self.f = vl;},
+            AF => {self.a = vh; self.f = vl & 0xF0;},
             BC => {self.b = vh; self.c = vl;},
             DE => {self.d = vh; self.e = vl;},
             HL => {self.h = vh; self.l = vl;},
