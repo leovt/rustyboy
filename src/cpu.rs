@@ -193,6 +193,37 @@ fn sub16(a:u16, b:u16, c:u8, cf_out:&mut bool, hf_out:&mut bool) -> u16 {
     r
 }
 
+fn daa(a:u8, nf: bool, cf:bool, hf: bool, cf_out: &mut bool) -> u8 {
+    let mut tmp = a as i16;
+
+    if nf {
+        if hf {
+            tmp -= 6;
+            if !cf {
+                tmp &= 0xFF;
+            }
+        }
+        if cf {
+            tmp -= 0x60;
+        }
+    } else {
+        if hf || ( tmp & 0x0F ) > 9 {
+            tmp += 6;
+        }
+        if cf || tmp > 0x9F {
+            tmp += 0x60;
+        }
+    }
+
+    if tmp & 0x100 != 0 {
+        *cf_out = true;
+    } else {
+        *cf_out = cf;
+    }
+
+    (tmp & 0xFF) as u8
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -254,6 +285,14 @@ mod tests {
         assert_eq!(add16(0xe300, 0x1cff, 1, &mut c, &mut h), 0x0000);
         assert_eq!(c, true);
         assert_eq!(h, true);
+    }
+
+    #[test]
+    fn test_daa() {
+        let mut c: bool = false;
+        let result = daa(0x00, true,false,true, &mut c);
+        assert_eq!(result, 0xfa, "daa 0x00 NH expect 0xfa, is {}.", result);
+        assert_eq!(c, false, "daa 0x00 NH expect carry flag reset");
     }
 
 
@@ -389,7 +428,7 @@ impl Cpu {
             BIT => s & bit,
             CP => sub(d, s, 0, &mut cf_out, &mut hf_out),
             CPL => !d,
-            DAA => d,
+            DAA => daa(d, self.f & FLAG_N != 0, self.f & FLAG_C != 0, self.f & FLAG_H != 0, &mut cf_out),
             DEC => sub(d, 1, 0, &mut cf_out, &mut hf_out),
             INC => add(d, 1, 0, &mut cf_out, &mut hf_out),
             LD => s,
