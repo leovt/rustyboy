@@ -1,4 +1,4 @@
-
+use std::env;
 mod cpu;
 mod ppu;
 mod debugger;
@@ -44,8 +44,13 @@ fn main_ppu() {
     let mut mmu = Mmu::new();
     mmu.load_boot_rom("RBOY_ROM.bin");
 
-    // checksum for empty cardridge
-    mmu.write(0x14d, 0x00);
+    {
+        let args: Vec<String> = env::args().collect();
+        println!("{:?}", args);
+        let filename = &args[1];
+        mmu.load(filename, 0);
+    }
+
     let cpu = Cpu::new(mmu);
     let ppu = Ppu::new();
     let mut dbg = Debugger::new(cpu, ppu);
