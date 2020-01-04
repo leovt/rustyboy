@@ -42,13 +42,14 @@ fn main_ppu() {
     let mut ups = 0usize;
 
     let mut mmu = Mmu::new();
-    mmu.load_boot_rom("RBOY_ROM.bin");
-
     {
         let args: Vec<String> = env::args().collect();
-        println!("{:?}", args);
-        let filename = &args[1];
-        mmu.load(filename, 0);
+        mmu.load(&args[1], 0);
+        if args.len() > 2 {
+            mmu.load_boot_rom(&args[2]);
+        } else {
+            mmu.load_boot_rom("RBOY_ROM.bin");
+        }
     }
 
     let cpu = Cpu::new(mmu);
