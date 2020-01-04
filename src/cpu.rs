@@ -39,10 +39,10 @@ impl Timer {
                 _ => 1024
             };
             for _ in 0..cycles {
-                let old = self.div & freq;
+                let old = self.div & (freq >> 1);
                 self.div += 1;
                 self.div &= 0xffff;
-                let new = self.div & freq;
+                let new = self.div & (freq >> 1);
                 if old == 0 && new != 0 {
                     if self.tima == 0xff {
                         self.tima = self.tma;
@@ -53,7 +53,7 @@ impl Timer {
                     }
                 }
             }
-            println!("timer div={}, tac={}, tima={}, tma={}", self.div, self.tac, self.tima, self.tma);
+            //println!("timer div={}, tac={}, tima={}, tma={}", self.div, self.tac, self.tima, self.tma);
         }
         interrupt
     }
@@ -589,53 +589,59 @@ impl Cpu {
     }
 
     pub fn step(&mut self) -> isize {
-        let (instr, imm) = self.fetch_and_decode();
-
-        match instr.operation {
-            DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
-            DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
-            JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
-            SPIMM8 {dst} => {
-                let sp = self.sp as u32 | 0x01000000;
-                let offset = match imm {Immediate::Imm8(i) => i as u32,
-                            _ => panic!("Expect IMM8!")};
-
-                self.f  = if sp & 0xff > 0xff - offset {FLAG_C} else {0};
-                self.f |= if (sp & 0x0f) + (offset & 0x0f) > 0x0f {FLAG_H} else {0};
-
-                let r = if offset & 0x80 == 0 {
-                    sp + offset
-                } else {
-                    sp - (0x100 - offset)
-                };
-                self.writeloc16(dst, imm, (r & 0xffff) as u16);
-            },
-            PREFIX => panic!("PREFIX must not occur after decoding."),
-            SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
-            CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
-            DI => {self.ie = false;},
-            EI => {self.ie = true;},
-            HALT => {self.hlt = true;},
-            NOP => (),
-            STOP => {self.hlt = true;}, //treat as HALT for now
-            UNDEF => panic!("UNDEF instruction occured."),
-        }
-
-        let irq = self.mmu.read(0xffff) & self.mmu.read(0xff0f);
-        if self.ie && (irq != 0) {
-            self.ie = false;
-            self.mmu.write(0xff0f, 0);
-            let mut rst_target:u8 = 0;
-            if irq & 0x01 != 0 {rst_target = 0x40;}
-            else if irq & 0x02 != 0 {rst_target = 0x48;}
-            else if irq & 0x04 != 0 {rst_target = 0x50;}
-            else if irq & 0x08 != 0 {rst_target = 0x58;}
-            else if irq & 0x10 != 0 {rst_target = 0x60;}
-            self.jump(OpJump::RST, rst_target, Immediate::None);
-            16 + instr.cycles as isize
+        let mut cycles = 0;
+        if self.hlt {
+            cycles = 4;
         }
         else {
-            instr.cycles as isize
+            let (instr, imm) = self.fetch_and_decode();
+
+            match instr.operation {
+                DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
+                DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
+                JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
+                SPIMM8 {dst} => {
+                    let sp = self.sp as u32 | 0x01000000;
+                    let offset = match imm {Immediate::Imm8(i) => i as u32,
+                                _ => panic!("Expect IMM8!")};
+
+                    self.f  = if sp & 0xff > 0xff - offset {FLAG_C} else {0};
+                    self.f |= if (sp & 0x0f) + (offset & 0x0f) > 0x0f {FLAG_H} else {0};
+
+                    let r = if offset & 0x80 == 0 {
+                        sp + offset
+                    } else {
+                        sp - (0x100 - offset)
+                    };
+                    self.writeloc16(dst, imm, (r & 0xffff) as u16);
+                },
+                PREFIX => panic!("PREFIX must not occur after decoding."),
+                SCF => {self.f = (self.f & !FLAG_H & !FLAG_N) | FLAG_C;},
+                CCF => {self.f = (self.f & !FLAG_H & !FLAG_N) ^ FLAG_C;},
+                DI => {self.ie = false;},
+                EI => {self.ie = true;},
+                HALT | STOP => {self.hlt = true;},
+                NOP => (),
+                UNDEF => panic!("UNDEF instruction occured."),
+            }
+            cycles += instr.cycles as isize;
         }
+        let irq = self.mmu.read(0xffff) & self.mmu.read(0xff0f);
+        if irq != 0 {
+            self.hlt = false;
+            if self.ie {
+                self.ie = false;
+                self.mmu.write(0xff0f, 0);
+                let mut rst_target:u8 = 0;
+                if irq & 0x01 != 0 {rst_target = 0x40;}
+                else if irq & 0x02 != 0 {rst_target = 0x48;}
+                else if irq & 0x04 != 0 {rst_target = 0x50;}
+                else if irq & 0x08 != 0 {rst_target = 0x58;}
+                else if irq & 0x10 != 0 {rst_target = 0x60;}
+                self.jump(OpJump::RST, rst_target, Immediate::None);
+                cycles += 16;
+            }
+        }
+        cycles
     }
 }
