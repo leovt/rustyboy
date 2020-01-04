@@ -599,7 +599,7 @@ impl Cpu {
             match instr.operation {
                 DATA16 {op, dst, src, z, n, h, c, } => self.data16(op, dst, src, z, n, h, c, imm),
                 DATA8 {op, dst, src, z, n, h, c, bit} => self.data8(op, dst, src, z, n, h, c, bit, imm),
-                JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)},
+                JUMP  {op, cond, rst_target} => if self.condition_satisfied(cond) {self.jump(op, rst_target, imm)} else {cycles += instr.cycles_nj as isize - instr.cycles as isize;},
                 SPIMM8 {dst} => {
                     let sp = self.sp as u32 | 0x01000000;
                     let offset = match imm {Immediate::Imm8(i) => i as u32,
