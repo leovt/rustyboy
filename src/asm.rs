@@ -252,6 +252,13 @@ fn main() {
                     [] => (),
                     ["LD", dst, src] => ld(dst, src, &mut data, &mut fixes),
 
+                    ["ADD", "SP", src] => match parse_arg(src) {
+                        Imm(i) => {
+                            data.push(232);
+                            data.push(i as u8);
+                        },
+                        _ => panic!("illegal argument for ADD SP, xx")
+                    },
                     ["ADD", src] => binop(0x80, src, &mut data),
                     ["ADC", src] => binop(0x88, src, &mut data),
                     ["SUB", src] => binop(0x90, src, &mut data),
