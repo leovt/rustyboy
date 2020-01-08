@@ -18,3 +18,9 @@ rboy game.rom [boot.rom]
 
 * Emulator starts in debug mode, press t[ENTER], c[ENTER] to run
 * boot rom is optional, by default RBOY_ROM.bin will be loaded
+
+# RESOURCES
+* Main Inspiration: https://media.ccc.de/v/33c3-8029-the_ultimate_game_boy_talk
+* http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
+* https://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
+* https://github.com/retrio/gb-test-roms
