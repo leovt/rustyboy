@@ -11,6 +11,8 @@ extern crate image as im;
 extern crate piston_window;
 extern crate fps_counter;
 use piston_window::*;
+use piston_window::keyboard::Key;
+use piston_window::Button::Keyboard;
 
 fn main_ppu() {
     const ZOOM:u32 = 3;
@@ -60,9 +62,11 @@ fn main_ppu() {
     let cycles_per_second = 4*1024*1024;
     let cycles_per_update = cycles_per_second / ups_target;
 
+    let mut buttons:u8 = 0;
+
     while let Some(e) = window.next() {
         if let Some(_) = e.update_args() {
-            dbg.interact(&mut lcd, cycles_per_update);
+            dbg.interact(&mut lcd, cycles_per_update, buttons);
             ups = ups_ctr.tick();
         }
         if let Some(_) = e.render_args() {
@@ -73,6 +77,26 @@ fn main_ppu() {
                 fps_print_ctr = 0;
             }
             texture.update(&mut texture_context, &lcd).unwrap();
+        }
+        if let Some(args) = e.button_args() {
+            let key = match args.button {
+                Keyboard(Key::Right) => 0x01,
+                Keyboard(Key::Left) => 0x02,
+                Keyboard(Key::Up) => 0x04,
+                Keyboard(Key::Down) => 0x08,
+                Keyboard(Key::S) => 0x10,
+                Keyboard(Key::A) => 0x20,
+                Keyboard(Key::Space) => 0x40,
+                Keyboard(Key::Return) => 0x80,
+                _ => 0,
+            };
+            if args.state == ButtonState::Press {
+                buttons |= key;
+            }
+            else {
+                buttons &= !key;
+            }
+            println!("ButtonArgs {:?} ---> buttons = {:02x}", args, buttons);
         }
         window.draw_2d(&e, |c, g, device| {
             // Update texture before rendering.
