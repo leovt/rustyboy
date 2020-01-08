@@ -81,6 +81,7 @@ impl Mmu {
 
     pub fn read(&self, address:u16) -> u8{
         match address {
+            0xff00 => self.memory[address as usize] | 0xcf, // keys
             0xff04 => ((self.timer.div & 0xff00) >> 8) as u8,
             0xff05 => self.timer.tima,
             0xff06 => self.timer.tma,
