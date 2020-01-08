@@ -12,6 +12,7 @@ pub struct Mmu {
     boot_rom_enable:bool,
     timer:Timer,
     bank:u8,
+    buttons:u8,
 }
 
 pub struct Timer {
@@ -81,7 +82,10 @@ impl Mmu {
 
     pub fn read(&self, address:u16) -> u8{
         match address {
-            0xff00 => self.memory[address as usize] | 0xcf, // keys
+            0xff00 =>
+                (self.memory[address as usize] | 0xcf) &
+                (if self.memory[address as usize] & 0x10 == 0 {self.buttons | 0xF0} else {0xff}) &
+                (if self.memory[address as usize] & 0x20 == 0 {(self.buttons>>4) | 0xF0} else {0xff}),
             0xff04 => ((self.timer.div & 0xff00) >> 8) as u8,
             0xff05 => self.timer.tima,
             0xff06 => self.timer.tma,
@@ -105,6 +109,7 @@ impl Mmu {
             boot_rom_enable:true,
             timer:Timer::new(),
             bank:1,
+            buttons:0xff,
          }
     }
 
@@ -134,6 +139,10 @@ impl Mmu {
         if self.timer.tick(cycles){
             self.flag_interrupt(0x04);
         }
+    }
+
+    pub fn set_buttons(&mut self, buttons:u8) {
+        self.buttons = !buttons;
     }
 }
 

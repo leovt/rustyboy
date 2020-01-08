@@ -67,7 +67,8 @@ impl Debugger {
         Debugger {cpu, ppu, breakpoints: HashSet::new(), trace:true, running: false}
     }
 
-    pub fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, max_cycles:isize) -> isize {
+    pub fn interact(&mut self, lcd: &mut ImageBuffer<Rgba<u8>, Vec<u8>>, max_cycles:isize, buttons:u8) -> isize {
+        self.cpu.mmu.set_buttons(buttons);
         if self.running {
             self.run_to_breakpoint(lcd, false, max_cycles)
         }
