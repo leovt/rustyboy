@@ -132,7 +132,31 @@ impl Ppu {
                     let upper_bit = (upper & (1 << x_tile)) >> x_tile;
                     let lower_bit = (lower & (1 << x_tile)) >> x_tile;
 
-                    lcd.put_pixel(self.x as u32, ly as u32, LCD_PALETTE[(2*upper_bit + lower_bit) as usize]);
+                    let mut pixel = 2*upper_bit + lower_bit;
+
+                    if control & ctrl_flags::OBJ_ENABLE != 0 {
+                        for obj in 0..0x10 {
+                            let x = mmu.read(0xfe00 + 4*obj + 1);
+                            let y = mmu.read(0xfe00 + 4*obj);
+                            let n = mmu.read(0xfe00 + 4*obj + 2) as u16;
+                            //let flags = mmu.read(0xfe00 + 4*obj + 3);
+                            if (x > self.x) & (x <= self.x + 8) & (y > ly + 8) & (y <= ly + 16) {
+                                let x_tile = x - self.x - 1;
+                                let y_tile = (16 - y + ly) as u16;
+
+                                let upper = mmu.read(0x8000 + n * 16 + y_tile * 2);
+                                let lower = mmu.read(0x8000 + n * 16 + y_tile * 2 + 1);
+                                let upper_bit = (upper & (1 << x_tile)) >> x_tile;
+                                let lower_bit = (lower & (1 << x_tile)) >> x_tile;
+
+                                pixel = 2*upper_bit + lower_bit;
+
+                                break;
+                            }
+                        }
+                    }
+
+                    lcd.put_pixel(self.x as u32, ly as u32, LCD_PALETTE[pixel as usize]);
 
                     self.x += 1;
                     if self.x >= 160 {
