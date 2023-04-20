@@ -347,7 +347,7 @@ impl Cpu {
 
         let addr = match imm {
             Immediate::Imm16(addr) => addr,
-            Immediate::Imm8(offset) => if offset < 128 {self.pc + offset as u16} else {self.pc + offset as u16 - 0x100},
+            Immediate::Imm8(offset) => if offset < 128 {self.pc.wrapping_add(offset as u16)} else {self.pc.wrapping_add(offset as u16 - 0x100)},
             Immediate::None => if op == JP {word(self.h, self.l)} else {rst_target as u16},
         };
 
@@ -450,9 +450,9 @@ impl Cpu {
             RRC => {cf_out = d & 1 != 0; (d >> 1) | (if cf_out {0x80} else {0})},
             SBC => sub(d, s, c_in, &mut cf_out, &mut hf_out),
             SET => d | bit,
-            SLA => {cf_out = d & 0x80 != 0; (d << 1)},
+            SLA => {cf_out = d & 0x80 != 0; d << 1},
             SRA => {cf_out = d & 1 != 0; (d >> 1) | (d & 0x80)},
-            SRL => {cf_out = d & 1 != 0; (d >> 1)},
+            SRL => {cf_out = d & 1 != 0; d >> 1},
             SUB => sub(d, s, 0, &mut cf_out, &mut hf_out),
             SWAP => (d >> 4) | (d << 4),
             XOR => d ^ s,

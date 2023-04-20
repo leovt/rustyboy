@@ -224,7 +224,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
     let filename_in = &args[1];
-    let mut f = File::open(filename_in).expect("could not open file for reading");
+    let f = File::open(filename_in).expect("could not open file for reading");
 
     let mut data = Vec::new();
     let reader = BufReader::new(f);
